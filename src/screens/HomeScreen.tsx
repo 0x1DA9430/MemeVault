@@ -8,17 +8,27 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 import { StorageService } from '../services/storage';
 import { MemeGrid } from '../components/MemeGrid';
+import { MemePreview } from '../components/MemePreview';
 import { Meme } from '../types/meme';
 
 export const HomeScreen: React.FC = () => {
   const [memes, setMemes] = useState<Meme[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMeme, setSelectedMeme] = useState<Meme | null>(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
   const storageService = StorageService.getInstance();
 
   useEffect(() => {
-    loadMemes();
+    (async () => {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('权限错误', '需要相册权限才能使用完整功能');
+      }
+      loadMemes();
+    })();
   }, []);
 
   const loadMemes = async () => {
@@ -51,8 +61,8 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleMemePress = (meme: Meme) => {
-    // TODO: 实现图片预览功能
-    console.log('Meme pressed:', meme);
+    setSelectedMeme(meme);
+    setPreviewVisible(true);
   };
 
   const handleMemeLongPress = (meme: Meme) => {
@@ -60,6 +70,17 @@ export const HomeScreen: React.FC = () => {
       '操作',
       '选择要执行的操作',
       [
+        {
+          text: '保存到相册',
+          onPress: async () => {
+            try {
+              await storageService.saveToGallery(meme);
+              Alert.alert('成功', '图片已保存到相册');
+            } catch (error) {
+              Alert.alert('错误', '保存到相册失败');
+            }
+          },
+        },
         {
           text: '删除',
           style: 'destructive',
@@ -80,6 +101,11 @@ export const HomeScreen: React.FC = () => {
     );
   };
 
+  const handleClosePreview = () => {
+    setPreviewVisible(false);
+    setSelectedMeme(null);
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -98,6 +124,11 @@ export const HomeScreen: React.FC = () => {
       <TouchableOpacity style={styles.addButton} onPress={handleAddMeme}>
         <Text style={styles.addButtonText}>+</Text>
       </TouchableOpacity>
+      <MemePreview
+        meme={selectedMeme}
+        visible={previewVisible}
+        onClose={handleClosePreview}
+      />
     </View>
   );
 };

@@ -1,5 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as MediaLibrary from 'expo-media-library';
+import { Platform } from 'react-native';
 import { Meme, MemeCollection } from '../types/meme';
 
 const MEMES_STORAGE_KEY = '@meme_vault_memes';
@@ -46,8 +48,8 @@ export class StorageService {
       tags: [],
       createdAt: new Date(),
       modifiedAt: new Date(),
-      size: (fileInfo as any).size || 0, // Type assertion for backward compatibility
-      width: 0, // 需要获取实际尺寸
+      size: (fileInfo as any).size || 0,
+      width: 0,
       height: 0,
       favorite: false
     };
@@ -57,6 +59,18 @@ export class StorageService {
     await this.saveMemes(memes);
 
     return meme;
+  }
+
+  async saveToGallery(meme: Meme): Promise<void> {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status === 'granted') {
+        await MediaLibrary.createAssetAsync(meme.uri);
+      }
+    } catch (error) {
+      console.error('保存到相册失败:', error);
+      throw error;
+    }
   }
 
   private async getMemes(): Promise<Meme[]> {
