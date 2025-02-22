@@ -8,6 +8,10 @@ import {
   ActivityIndicator,
   StatusBar,
   ScrollView,
+  Animated,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
@@ -37,8 +41,17 @@ export const HomeScreen: React.FC = () => {
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [allTags, setAllTags] = useState<string[]>([]);
   const [filteredMemes, setFilteredMemes] = useState<Meme[]>([]);
+  const [isTagListExpanded, setIsTagListExpanded] = useState(false);
   const storageService = StorageService.getInstance();
   const tagQueueService = TagQueueService.getInstance();
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -191,6 +204,11 @@ export const HomeScreen: React.FC = () => {
     setSelectedTags(new Set());
   };
 
+  const toggleTagList = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsTagListExpanded(!isTagListExpanded);
+  };
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
@@ -239,44 +257,64 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView
-          horizontal
-          style={[styles.tagScrollView, {
-            borderBottomColor: isDarkMode ? '#333' : '#E5E5E5',
-            backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
-          }]}
-          showsHorizontalScrollIndicator={false}
-        >
-          {selectedTags.size > 0 && (
-            <TouchableOpacity
-              style={styles.clearTagButton}
-              onPress={clearTagFilter}
-            >
-              <Ionicons name="close-circle" size={20} color={isDarkMode ? '#fff' : '#666'} />
+        <View style={[styles.tagSection, {
+          backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
+          borderBottomColor: isDarkMode ? '#333' : '#E5E5E5',
+        }]}>
+          <View style={styles.tagHeader}>
+            <Text style={[styles.tagHeaderText, { color: isDarkMode ? '#fff' : '#000' }]}>
+              标签过滤
+            </Text>
+            <TouchableOpacity onPress={toggleTagList} style={styles.expandButton}>
+              <Ionicons
+                name={isTagListExpanded ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={isDarkMode ? '#fff' : '#666'}
+              />
             </TouchableOpacity>
-          )}
-          {allTags.map((tag, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.tagButton,
-                { backgroundColor: isDarkMode ? '#333' : '#F0F0F0' },
-                selectedTags.has(tag) && styles.tagButtonSelected,
-              ]}
-              onPress={() => toggleTag(tag)}
-            >
-              <Text
-                style={[
-                  styles.tagButtonText,
-                  { color: isDarkMode ? '#fff' : '#666' },
-                  selectedTags.has(tag) && styles.tagButtonTextSelected,
-                ]}
+          </View>
+          
+          <ScrollView
+            style={[
+              styles.tagScrollView,
+              { maxHeight: isTagListExpanded ? 200 : 50 }
+            ]}
+            contentContainerStyle={styles.tagScrollContent}
+            showsVerticalScrollIndicator={isTagListExpanded}
+            showsHorizontalScrollIndicator={false}
+            horizontal={!isTagListExpanded}
+          >
+            {selectedTags.size > 0 && (
+              <TouchableOpacity
+                style={styles.clearTagButton}
+                onPress={clearTagFilter}
               >
-                {tag}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                <Ionicons name="close-circle" size={20} color={isDarkMode ? '#fff' : '#666'} />
+              </TouchableOpacity>
+            )}
+            {allTags.map((tag, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.tagButton,
+                  { backgroundColor: isDarkMode ? '#333' : '#F0F0F0' },
+                  selectedTags.has(tag) && styles.tagButtonSelected,
+                ]}
+                onPress={() => toggleTag(tag)}
+              >
+                <Text
+                  style={[
+                    styles.tagButtonText,
+                    { color: isDarkMode ? '#fff' : '#666' },
+                    selectedTags.has(tag) && styles.tagButtonTextSelected,
+                  ]}
+                >
+                  {tag}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
       )}
 
       <MemeGrid
@@ -370,10 +408,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#007AFF',
   },
+  tagSection: {
+    borderBottomWidth: 1,
+  },
+  tagHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  tagHeaderText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  expandButton: {
+    padding: 8,
+  },
   tagScrollView: {
     maxHeight: 50,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+  },
+  tagScrollContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 8,
   },
   tagButton: {
     paddingHorizontal: 12,
@@ -381,7 +439,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#F0F0F0',
     marginHorizontal: 4,
-    marginVertical: 8,
+    marginVertical: 4,
   },
   tagButtonSelected: {
     backgroundColor: '#007AFF',

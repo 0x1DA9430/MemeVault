@@ -182,4 +182,24 @@ export class StorageService {
       console.error('Error saving collection:', error);
     }
   }
+
+  // 新增：通用存储项目获取方法
+  async getItem(key: string): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch (error) {
+      console.error('获取存储项目失败:', error);
+      return null;
+    }
+  }
+
+  // 新增：通用存储项目设置方法
+  async setItem(key: string, value: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch (error) {
+      console.error('保存存储项目失败:', error);
+      throw error;
+    }
+  }
 }  

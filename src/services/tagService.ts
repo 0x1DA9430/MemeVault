@@ -1,15 +1,18 @@
 import { Meme, TagSuggestion } from '../types/meme';
 import { SettingsService } from './settings';
+import { TagNormalizer } from './tagNormalizer';
 
 export class TagService {
   private static instance: TagService;
   private settingsService: SettingsService;
+  private tagNormalizer: TagNormalizer;
   private readonly MAX_TAG_LENGTH = 5;
   private readonly TIMEOUT = 60000; // 增加到60秒
   private readonly MAX_RETRIES = 2; // 单次请求的最大重试次数
 
   private constructor() {
     this.settingsService = SettingsService.getInstance();
+    this.tagNormalizer = TagNormalizer.getInstance();
   }
 
   static getInstance(): TagService {
@@ -140,7 +143,18 @@ export class TagService {
           throw new Error('没有有效的标签');
         }
 
-        return validSuggestions.slice(0, settings.maxTags);
+        // 标准化标签
+        const normalizedSuggestions = validSuggestions.map(s => ({
+          ...s,
+          tag: this.tagNormalizer.normalizeTag(s.tag)
+        }));
+
+        // 去重
+        const uniqueSuggestions = Array.from(
+          new Map(normalizedSuggestions.map(s => [s.tag, s])).values()
+        );
+
+        return uniqueSuggestions.slice(0, settings.maxTags);
       };
 
       return await this.retryWithTimeout(makeRequest);
@@ -179,8 +193,12 @@ export class TagService {
 
   async validateTags(tags: string[]): Promise<string[]> {
     const settings = await this.settingsService.getSettings();
-    return tags
+    const validTags = tags
       .filter(tag => this.validateTagLength(tag))
-      .slice(0, settings.maxTags);
+      .map(tag => this.tagNormalizer.normalizeTag(tag));
+    
+    // 去重
+    const uniqueTags = Array.from(new Set(validTags));
+    return uniqueTags.slice(0, settings.maxTags);
   }
 } 
