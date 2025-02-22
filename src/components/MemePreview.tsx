@@ -27,28 +27,35 @@ interface MemePreviewProps {
   meme: Meme | null;
   visible: boolean;
   onClose: () => void;
+  memes: Meme[];
 }
 
 const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
 const SWIPE_THRESHOLD = 100;
-const SHARE_THRESHOLD = -100; // 上滑分享阈值
+const SHARE_THRESHOLD = -100;
+const HORIZONTAL_SWIPE_THRESHOLD = screenWidth * 0.2;
 
 export const MemePreview: React.FC<MemePreviewProps> = ({
   meme,
   visible,
   onClose,
+  memes,
 }) => {
   const viewShotRef = useRef<ViewShot>(null);
   const translateY = useRef(new Animated.Value(0)).current;
+  const translateX = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.8)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const [imageSize, setImageSize] = useState({ width: screenWidth, height: screenWidth });
   const [isSharing, setIsSharing] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(-1);
 
   useEffect(() => {
     if (meme) {
+      const index = memes.findIndex(m => m.id === meme.id);
+      setCurrentIndex(index);
       Image.getSize(meme.uri, (width, height) => {
         const aspectRatio = height / width;
         setImageSize({
@@ -57,20 +64,10 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
         });
       });
     }
-  }, [meme]);
-
-  const resetAnimatedValues = () => {
-    translateY.setValue(0);
-    scale.setValue(0.8);
-    opacity.setValue(0);
-    setIsClosing(false);
-  };
+  }, [meme, memes]);
 
   useEffect(() => {
     if (visible) {
-      if (isClosing) {
-        return;
-      }
       resetAnimatedValues();
       setIsSharing(false);
       Animated.parallel([
@@ -89,6 +86,76 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
       ]).start();
     }
   }, [visible]);
+
+  const switchToImage = (index: number) => {
+    if (index < 0 || index >= memes.length) return false;
+    
+    const nextMeme = memes[index];
+    Image.getSize(nextMeme.uri, (width, height) => {
+      const aspectRatio = height / width;
+      setImageSize({
+        width: screenWidth,
+        height: screenWidth * aspectRatio,
+      });
+    });
+    setCurrentIndex(index);
+    return true;
+  };
+
+  const handleHorizontalSwipe = (direction: 'left' | 'right') => {
+    const nextIndex = direction === 'left' ? currentIndex + 1 : currentIndex - 1;
+    if (nextIndex < 0 || nextIndex >= memes.length) {
+      // 如果超出范围，回弹
+      Animated.spring(translateX, {
+        toValue: 0,
+        damping: 20,
+        mass: 0.6,
+        stiffness: 400,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    // 切换到下一张图片
+    const targetX = direction === 'left' ? -screenWidth : screenWidth;
+    Animated.sequence([
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateX, {
+        toValue: targetX,
+        duration: 0,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      switchToImage(nextIndex);
+      translateX.setValue(-targetX);
+      Animated.parallel([
+        Animated.spring(translateX, {
+          toValue: 0,
+          damping: 20,
+          mass: 0.6,
+          stiffness: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  };
+
+  const resetAnimatedValues = () => {
+    translateY.setValue(0);
+    translateX.setValue(0);
+    scale.setValue(0.8);
+    opacity.setValue(0);
+    setIsClosing(false);
+  };
 
   const handleShare = async () => {
     if (!meme || !viewShotRef.current || isSharing) return;
@@ -149,72 +216,86 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
   const gesture = Gesture.Pan()
     .onChange((event) => {
       if (isClosing) return;
-      // 处理上滑
-      if (event.translationY < 0) {
-        translateY.setValue(event.translationY);
-        scale.setValue(Math.max(0.95, 1 + event.translationY / screenHeight));
-      }
-      // 处理下滑
-      else if (event.translationY > 0) {
-        translateY.setValue(event.translationY);
-        const newScale = Math.max(0.3, 1 - event.translationY / screenHeight);
-        scale.setValue(newScale);
-        opacity.setValue(Math.max(0, 1 - event.translationY / (screenHeight * 0.5)));
+
+      if (Math.abs(event.translationX) > Math.abs(event.translationY)) {
+        // 水平滑动
+        translateX.setValue(event.translationX);
+      } else {
+        // 垂直滑动
+        if (event.translationY < 0) {
+          translateY.setValue(event.translationY);
+          scale.setValue(Math.max(0.95, 1 + event.translationY / screenHeight));
+        } else if (event.translationY > 0) {
+          translateY.setValue(event.translationY);
+          const newScale = Math.max(0.3, 1 - event.translationY / screenHeight);
+          scale.setValue(newScale);
+          opacity.setValue(Math.max(0, 1 - event.translationY / (screenHeight * 0.5)));
+        }
       }
     })
     .onEnd((event) => {
       if (isClosing) return;
-      // 处理上滑分享
-      if (event.translationY < SHARE_THRESHOLD && event.velocityY < 0) {
-        // 立即触发分享
-        handleShare();
-        // 同时执行回弹动画
-        Animated.parallel([
-          Animated.spring(translateY, {
+
+      if (Math.abs(event.translationX) > Math.abs(event.translationY)) {
+        // 处理水平滑动
+        if (Math.abs(event.translationX) > HORIZONTAL_SWIPE_THRESHOLD) {
+          handleHorizontalSwipe(event.translationX > 0 ? 'right' : 'left');
+        } else {
+          Animated.spring(translateX, {
             toValue: 0,
-            damping: 15,
-            mass: 1,
-            stiffness: 150,
+            damping: 20,
+            mass: 0.6,
+            stiffness: 400,
             useNativeDriver: true,
-          }),
-          Animated.spring(scale, {
-            toValue: 1,
-            damping: 15,
-            mass: 1,
-            stiffness: 150,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }
-      // 处理下滑关闭
-      else if (event.velocityY > 0 && event.translationY > SWIPE_THRESHOLD) {
-        handleClose();
-      }
-      // 回弹
-      else {
-        Animated.parallel([
-          Animated.spring(translateY, {
-            toValue: 0,
-            damping: 15,
-            mass: 1,
-            stiffness: 150,
-            useNativeDriver: true,
-          }),
-          Animated.spring(scale, {
-            toValue: 1,
-            damping: 15,
-            mass: 1,
-            stiffness: 150,
-            useNativeDriver: true,
-          }),
-          Animated.spring(opacity, {
-            toValue: 1,
-            damping: 15,
-            mass: 1,
-            stiffness: 150,
-            useNativeDriver: true,
-          }),
-        ]).start();
+          }).start();
+        }
+      } else {
+        // 处理垂直滑动
+        if (event.translationY < SHARE_THRESHOLD && event.velocityY < 0) {
+          handleShare();
+          Animated.parallel([
+            Animated.spring(translateY, {
+              toValue: 0,
+              damping: 15,
+              mass: 1,
+              stiffness: 150,
+              useNativeDriver: true,
+            }),
+            Animated.spring(scale, {
+              toValue: 1,
+              damping: 15,
+              mass: 1,
+              stiffness: 150,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        } else if (event.velocityY > 0 && event.translationY > SWIPE_THRESHOLD) {
+          handleClose();
+        } else {
+          Animated.parallel([
+            Animated.spring(translateY, {
+              toValue: 0,
+              damping: 15,
+              mass: 1,
+              stiffness: 150,
+              useNativeDriver: true,
+            }),
+            Animated.spring(scale, {
+              toValue: 1,
+              damping: 15,
+              mass: 1,
+              stiffness: 150,
+              useNativeDriver: true,
+            }),
+            Animated.spring(opacity, {
+              toValue: 1,
+              damping: 15,
+              mass: 1,
+              stiffness: 150,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        }
       }
     });
 
@@ -222,6 +303,7 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
 
   const animatedContainerStyle = {
     transform: [
+      { translateX },
       { translateY },
       { scale },
     ],
@@ -258,7 +340,7 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
                       style={styles.imageContainer}
                     >
                       <Image
-                        source={{ uri: meme.uri }}
+                        source={{ uri: memes[currentIndex]?.uri }}
                         style={styles.image}
                         resizeMode="contain"
                       />

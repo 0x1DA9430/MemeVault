@@ -8,12 +8,15 @@ import {
   FlatList,
   Text,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Meme } from '../types/meme';
 
 interface MemeGridProps {
   memes: Meme[];
   onMemePress: (meme: Meme, position: { x: number; y: number; width: number; height: number }) => void;
   onMemeLongPress?: (meme: Meme) => void;
+  selectedMemes: Set<string>;
+  isSelectionMode: boolean;
 }
 
 const numColumns = 3;
@@ -25,6 +28,8 @@ export const MemeGrid: React.FC<MemeGridProps> = ({
   memes,
   onMemePress,
   onMemeLongPress,
+  selectedMemes,
+  isSelectionMode,
 }) => {
   const itemRefs = useRef<{ [key: string]: View | null }>({});
 
@@ -42,6 +47,7 @@ export const MemeGrid: React.FC<MemeGridProps> = ({
       style={styles.memeContainer}
       onPress={() => handlePress(item)}
       onLongPress={() => onMemeLongPress?.(item)}
+      delayLongPress={200}
     >
       <View
         ref={ref => itemRefs.current[item.id] = ref}
@@ -51,6 +57,16 @@ export const MemeGrid: React.FC<MemeGridProps> = ({
         {item.favorite && (
           <View style={styles.favoriteIndicator}>
             <Text style={styles.favoriteIcon}>★</Text>
+          </View>
+        )}
+        {isSelectionMode && (
+          <View style={[
+            styles.selectionIndicator,
+            selectedMemes.has(item.id) && styles.selectionIndicatorActive
+          ]}>
+            {selectedMemes.has(item.id) && (
+              <Ionicons name="checkmark" size={20} color="#fff" />
+            )}
           </View>
         )}
       </View>
@@ -99,5 +115,22 @@ const styles = StyleSheet.create({
   favoriteIcon: {
     color: '#FFD700',
     fontSize: 16,
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#fff',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectionIndicatorActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#fff',
   },
 }); 
