@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
@@ -10,10 +10,35 @@ import { TagService } from './src/services/tagService';
 import { TagQueueService } from './src/services/tagQueue';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
+const customDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: '#000',
+    card: '#1c1c1c',
+    text: '#fff',
+    border: '#333',
+  },
+};
+
+const customLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#fff',
+    card: '#fff',
+    text: '#000',
+    border: '#e0e0e0',
+  },
+};
+
+function AppContent() {
+  const { isDarkMode } = useTheme();
+
   useEffect(() => {
     // 确保所有服务已初始化
     StorageService.getInstance();
@@ -23,27 +48,38 @@ export default function App() {
   }, []);
 
   return (
-    <NavigationContainer>
-      <StatusBar style="auto" />
-      <Stack.Navigator>
+    <NavigationContainer theme={isDarkMode ? customDarkTheme : customLightTheme}>
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
+          },
+          headerTintColor: isDarkMode ? '#fff' : '#000',
+          contentStyle: {
+            backgroundColor: isDarkMode ? '#000' : '#fff',
+          },
+        }}
+      >
         <Stack.Screen
           name="Home"
           component={HomeScreen}
           options={({ navigation }) => ({
             title: 'Meme Vault',
-            headerStyle: {
-              backgroundColor: '#fff',
-            },
-            headerTintColor: '#000',
             headerTitleStyle: {
               fontWeight: 'bold',
+              color: isDarkMode ? '#fff' : '#000',
             },
             headerRight: () => (
               <TouchableOpacity
                 onPress={() => navigation.navigate('Settings')}
                 style={{ padding: 8 }}
               >
-                <Ionicons name="settings-outline" size={24} color="#000" />
+                <Ionicons 
+                  name="settings-outline" 
+                  size={24} 
+                  color={isDarkMode ? '#fff' : '#000'} 
+                />
               </TouchableOpacity>
             ),
           })}
@@ -53,16 +89,21 @@ export default function App() {
           component={SettingsScreen}
           options={{
             title: '设置',
-            headerStyle: {
-              backgroundColor: '#fff',
-            },
-            headerTintColor: '#000',
             headerTitleStyle: {
               fontWeight: 'bold',
+              color: isDarkMode ? '#fff' : '#000',
             },
           }}
         />
       </Stack.Navigator>
     </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }

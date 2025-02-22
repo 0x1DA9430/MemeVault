@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Meme } from '../types/meme';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface MemeGridProps {
   memes: Meme[];
@@ -31,6 +32,7 @@ export const MemeGrid: React.FC<MemeGridProps> = ({
   selectedMemes,
   isSelectionMode,
 }) => {
+  const { isDarkMode } = useTheme();
   const itemRefs = useRef<{ [key: string]: View | null }>({});
 
   const handlePress = (meme: Meme) => {
@@ -79,7 +81,10 @@ export const MemeGrid: React.FC<MemeGridProps> = ({
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
       numColumns={numColumns}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[
+        styles.container,
+        { backgroundColor: isDarkMode ? '#000' : '#fff' }
+      ]}
     />
   );
 };

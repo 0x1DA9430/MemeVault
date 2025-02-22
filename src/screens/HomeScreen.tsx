@@ -17,6 +17,7 @@ import { MemePreview } from '../components/MemePreview';
 import { Meme } from '../types/meme';
 import { Ionicons } from '@expo/vector-icons';
 import { TagQueueService } from '../services/tagQueue';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Position {
   x: number;
@@ -26,6 +27,7 @@ interface Position {
 }
 
 export const HomeScreen: React.FC = () => {
+  const { isDarkMode } = useTheme();
   const [memes, setMemes] = useState<Meme[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMeme, setSelectedMeme] = useState<Meme | null>(null);
@@ -191,34 +193,41 @@ export const HomeScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
+      <View style={[styles.loadingContainer, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
+        <ActivityIndicator size="large" color={isDarkMode ? '#fff' : '#0000ff'} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.container, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       
       {isSelectionMode ? (
-        <View style={styles.selectionHeader}>
+        <View style={[styles.selectionHeader, { 
+          backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
+          borderBottomColor: isDarkMode ? '#333' : '#E5E5E5',
+        }]}>
           <TouchableOpacity
             style={styles.headerButton}
             onPress={exitSelectionMode}
           >
-            <Ionicons name="close" size={24} color="#007AFF" />
+            <Ionicons name="close" size={24} color={isDarkMode ? '#fff' : '#007AFF'} />
           </TouchableOpacity>
           
           <View style={styles.headerActions}>
-            <Text style={styles.selectionCount}>
+            <Text style={[styles.selectionCount, { color: isDarkMode ? '#fff' : '#000' }]}>
               已选择 {selectedMemes.size} 项
             </Text>
             <TouchableOpacity
-              style={[styles.headerButton, styles.headerActionButton]}
+              style={[
+                styles.headerButton,
+                styles.headerActionButton,
+                { backgroundColor: isDarkMode ? '#333' : '#F0F0F0' }
+              ]}
               onPress={handleSelectAll}
             >
-              <Text style={styles.headerActionText}>全选</Text>
+              <Text style={[styles.headerActionText, { color: isDarkMode ? '#fff' : '#007AFF' }]}>全选</Text>
             </TouchableOpacity>
           </View>
           
@@ -232,7 +241,10 @@ export const HomeScreen: React.FC = () => {
       ) : (
         <ScrollView
           horizontal
-          style={styles.tagScrollView}
+          style={[styles.tagScrollView, {
+            borderBottomColor: isDarkMode ? '#333' : '#E5E5E5',
+            backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
+          }]}
           showsHorizontalScrollIndicator={false}
         >
           {selectedTags.size > 0 && (
@@ -240,7 +252,7 @@ export const HomeScreen: React.FC = () => {
               style={styles.clearTagButton}
               onPress={clearTagFilter}
             >
-              <Ionicons name="close-circle" size={20} color="#666" />
+              <Ionicons name="close-circle" size={20} color={isDarkMode ? '#fff' : '#666'} />
             </TouchableOpacity>
           )}
           {allTags.map((tag, index) => (
@@ -248,6 +260,7 @@ export const HomeScreen: React.FC = () => {
               key={index}
               style={[
                 styles.tagButton,
+                { backgroundColor: isDarkMode ? '#333' : '#F0F0F0' },
                 selectedTags.has(tag) && styles.tagButtonSelected,
               ]}
               onPress={() => toggleTag(tag)}
@@ -255,6 +268,7 @@ export const HomeScreen: React.FC = () => {
               <Text
                 style={[
                   styles.tagButtonText,
+                  { color: isDarkMode ? '#fff' : '#666' },
                   selectedTags.has(tag) && styles.tagButtonTextSelected,
                 ]}
               >

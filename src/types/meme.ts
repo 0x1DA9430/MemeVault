@@ -25,8 +25,11 @@ export interface TagSuggestion {
   type: 'text' | 'emotion' | 'subject' | 'meaning';
 }
 
+export type ThemeMode = 'auto' | 'light' | 'dark';
+
 export interface AutoTagSettings {
   enabled: boolean;
   apiKey: string;
   maxTags: number;
+  themeMode: ThemeMode;
 } 

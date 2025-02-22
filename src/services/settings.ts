@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS: AutoTagSettings = {
   enabled: false,
   apiKey: '',
   maxTags: 6,
+  themeMode: 'auto',
 };
 
 export class SettingsService {

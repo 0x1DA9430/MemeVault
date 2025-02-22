@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StorageService } from '../services/storage';
 import { TagService } from '../services/tagService';
 import { Meme } from '../types/meme';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface TagEditorProps {
   meme: Meme;
@@ -24,6 +25,7 @@ export const TagEditor: React.FC<TagEditorProps> = ({
   onClose,
   onTagsUpdated,
 }) => {
+  const { isDarkMode } = useTheme();
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [allTags, setAllTags] = useState<string[]>([]);
@@ -108,21 +110,24 @@ export const TagEditor: React.FC<TagEditorProps> = ({
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>编辑标签</Text>
+    <View style={[styles.container, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
+      <View style={[styles.header, { 
+        borderBottomColor: isDarkMode ? '#333' : '#f0f0f0',
+        backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
+      }]}>
+        <Text style={[styles.title, { color: isDarkMode ? '#fff' : '#000' }]}>编辑标签</Text>
         <View style={styles.headerButtons}>
           <TouchableOpacity
             style={styles.headerButton}
             onPress={handleGenerateTags}
           >
-            <Ionicons name="refresh" size={24} color="#007AFF" />
+            <Ionicons name="refresh" size={24} color={isDarkMode ? '#fff' : '#007AFF'} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerButton}
             onPress={onClose}
           >
-            <Ionicons name="close" size={24} color="#000" />
+            <Ionicons name="close" size={24} color={isDarkMode ? '#fff' : '#000'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -130,25 +135,39 @@ export const TagEditor: React.FC<TagEditorProps> = ({
       <ScrollView style={styles.tagContainer}>
         <View style={styles.tagList}>
           {tags.map((tag, index) => (
-            <View key={index} style={styles.tagItem}>
-              <Text style={styles.tagText}>{tag}</Text>
+            <View key={index} style={[
+              styles.tagItem,
+              { backgroundColor: isDarkMode ? '#333' : '#f0f0f0' }
+            ]}>
+              <Text style={[styles.tagText, { color: isDarkMode ? '#fff' : '#000' }]}>{tag}</Text>
               <TouchableOpacity
                 onPress={() => handleRemoveTag(tag)}
                 style={styles.removeButton}
               >
-                <Ionicons name="close-circle" size={20} color="#666" />
+                <Ionicons name="close-circle" size={20} color={isDarkMode ? '#fff' : '#666'} />
               </TouchableOpacity>
             </View>
           ))}
         </View>
       </ScrollView>
 
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { 
+        borderTopColor: isDarkMode ? '#333' : '#f0f0f0',
+        backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
+      }]}>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              borderColor: isDarkMode ? '#333' : '#ddd',
+              backgroundColor: isDarkMode ? '#333' : '#fff',
+              color: isDarkMode ? '#fff' : '#000',
+            }
+          ]}
           value={newTag}
           onChangeText={handleInputChange}
           placeholder="添加新标签"
+          placeholderTextColor={isDarkMode ? '#666' : '#999'}
           maxLength={20}
         />
         <TouchableOpacity
@@ -160,14 +179,26 @@ export const TagEditor: React.FC<TagEditorProps> = ({
       </View>
 
       {suggestions.length > 0 && (
-        <View style={styles.suggestionsContainer}>
+        <View style={[
+          styles.suggestionsContainer,
+          {
+            backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
+            borderColor: isDarkMode ? '#333' : '#ddd',
+          }
+        ]}>
           {suggestions.map((suggestion, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.suggestionItem}
+              style={[
+                styles.suggestionItem,
+                { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }
+              ]}
               onPress={() => handleSuggestionPress(suggestion)}
             >
-              <Text style={styles.suggestionText}>{suggestion}</Text>
+              <Text style={[
+                styles.suggestionText,
+                { color: isDarkMode ? '#fff' : '#000' }
+              ]}>{suggestion}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -186,7 +217,6 @@ export const TagEditor: React.FC<TagEditorProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -194,7 +224,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   title: {
     fontSize: 18,
@@ -236,7 +265,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
   },
   input: {
     flex: 1,
