@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Image,
@@ -12,7 +12,7 @@ import { Meme } from '../types/meme';
 
 interface MemeGridProps {
   memes: Meme[];
-  onMemePress: (meme: Meme) => void;
+  onMemePress: (meme: Meme, position: { x: number; y: number; width: number; height: number }) => void;
   onMemeLongPress?: (meme: Meme) => void;
 }
 
@@ -26,18 +26,34 @@ export const MemeGrid: React.FC<MemeGridProps> = ({
   onMemePress,
   onMemeLongPress,
 }) => {
+  const itemRefs = useRef<{ [key: string]: View | null }>({});
+
+  const handlePress = (meme: Meme) => {
+    const item = itemRefs.current[meme.id];
+    if (item) {
+      item.measureInWindow((x, y, width, height) => {
+        onMemePress(meme, { x, y, width, height });
+      });
+    }
+  };
+
   const renderItem = ({ item }: { item: Meme }) => (
     <TouchableOpacity
       style={styles.memeContainer}
-      onPress={() => onMemePress(item)}
+      onPress={() => handlePress(item)}
       onLongPress={() => onMemeLongPress?.(item)}
     >
-      <Image source={{ uri: item.uri }} style={styles.memeImage} />
-      {item.favorite && (
-        <View style={styles.favoriteIndicator}>
-          <Text style={styles.favoriteIcon}>★</Text>
-        </View>
-      )}
+      <View
+        ref={ref => itemRefs.current[item.id] = ref}
+        style={styles.memeContainer}
+      >
+        <Image source={{ uri: item.uri }} style={styles.memeImage} />
+        {item.favorite && (
+          <View style={styles.favoriteIndicator}>
+            <Text style={styles.favoriteIcon}>★</Text>
+          </View>
+        )}
+      </View>
     </TouchableOpacity>
   );
 

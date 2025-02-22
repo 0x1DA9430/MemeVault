@@ -14,11 +14,19 @@ import { MemeGrid } from '../components/MemeGrid';
 import { MemePreview } from '../components/MemePreview';
 import { Meme } from '../types/meme';
 
+interface Position {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export const HomeScreen: React.FC = () => {
   const [memes, setMemes] = useState<Meme[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMeme, setSelectedMeme] = useState<Meme | null>(null);
   const [previewVisible, setPreviewVisible] = useState(false);
+  const [sourcePosition, setSourcePosition] = useState<Position | null>(null);
   const storageService = StorageService.getInstance();
 
   useEffect(() => {
@@ -60,9 +68,16 @@ export const HomeScreen: React.FC = () => {
     }
   };
 
-  const handleMemePress = (meme: Meme) => {
+  const handleMemePress = (meme: Meme, position: Position) => {
     setSelectedMeme(meme);
+    setSourcePosition(position);
     setPreviewVisible(true);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewVisible(false);
+    setSelectedMeme(null);
+    setSourcePosition(null);
   };
 
   const handleMemeLongPress = (meme: Meme) => {
@@ -101,11 +116,6 @@ export const HomeScreen: React.FC = () => {
     );
   };
 
-  const handleClosePreview = () => {
-    setPreviewVisible(false);
-    setSelectedMeme(null);
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -128,6 +138,7 @@ export const HomeScreen: React.FC = () => {
         meme={selectedMeme}
         visible={previewVisible}
         onClose={handleClosePreview}
+        // sourcePosition={sourcePosition}
       />
     </View>
   );
@@ -146,7 +157,7 @@ const styles = StyleSheet.create({
   addButton: {
     position: 'absolute',
     right: 20,
-    bottom: 20,
+    bottom: 30,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -162,5 +173,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontSize: 32,
     color: '#fff',
+    lineHeight: 50,
+    paddingBottom: 4,
   },
 }); 

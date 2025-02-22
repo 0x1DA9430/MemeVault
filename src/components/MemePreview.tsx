@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Modal,
@@ -9,6 +9,9 @@ import {
   Share,
   Platform,
   TouchableWithoutFeedback,
+  Animated,
+  Alert,
+  Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
@@ -28,7 +31,8 @@ interface MemePreviewProps {
 
 const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
-const SWIPE_THRESHOLD = 100; // 下滑多少距离触发关闭
+const SWIPE_THRESHOLD = 100;
+const SHARE_THRESHOLD = -100; // 上滑分享阈值
 
 export const MemePreview: React.FC<MemePreviewProps> = ({
   meme,
@@ -36,19 +40,61 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
   onClose,
 }) => {
   const viewShotRef = useRef<ViewShot>(null);
+  const translateY = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.8)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const [imageSize, setImageSize] = useState({ width: screenWidth, height: screenWidth });
+  const [isSharing, setIsSharing] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
-  const gesture = Gesture.Pan()
-    .onEnd((event) => {
-      if (event.velocityY > 0 && event.translationY > SWIPE_THRESHOLD) {
-        onClose();
+  useEffect(() => {
+    if (meme) {
+      Image.getSize(meme.uri, (width, height) => {
+        const aspectRatio = height / width;
+        setImageSize({
+          width: screenWidth,
+          height: screenWidth * aspectRatio,
+        });
+      });
+    }
+  }, [meme]);
+
+  const resetAnimatedValues = () => {
+    translateY.setValue(0);
+    scale.setValue(0.8);
+    opacity.setValue(0);
+    setIsClosing(false);
+  };
+
+  useEffect(() => {
+    if (visible) {
+      if (isClosing) {
+        return;
       }
-    });
+      resetAnimatedValues();
+      setIsSharing(false);
+      Animated.parallel([
+        Animated.spring(scale, {
+          toValue: 1,
+          damping: 25,
+          mass: 0.8,
+          stiffness: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
 
   const handleShare = async () => {
-    if (!meme || !viewShotRef.current) return;
+    if (!meme || !viewShotRef.current || isSharing) return;
+    setIsSharing(true);
 
     try {
-      // 捕获图片
       const uri = await captureRef(viewShotRef, {
         format: 'jpg',
         quality: 1,
@@ -57,45 +103,152 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
       if (!uri) return;
 
       if (Platform.OS === 'ios') {
-        // iOS 使用系统分享
         await Share.share({
           url: uri,
         });
       } else {
-        // Android 使用 expo-sharing
         await Sharing.shareAsync(uri, {
           UTI: 'public.image',
           mimeType: 'image/jpeg',
+          dialogTitle: '分享到微信',
         });
       }
     } catch (error) {
       console.error('分享失败:', error);
+    } finally {
+      setIsSharing(false);
     }
   };
 
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: screenHeight,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 0.3,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+      setIsClosing(false);
+    });
+  };
+
+  const gesture = Gesture.Pan()
+    .onChange((event) => {
+      if (isClosing) return;
+      // 处理上滑
+      if (event.translationY < 0) {
+        translateY.setValue(event.translationY);
+        scale.setValue(Math.max(0.95, 1 + event.translationY / screenHeight));
+      }
+      // 处理下滑
+      else if (event.translationY > 0) {
+        translateY.setValue(event.translationY);
+        const newScale = Math.max(0.3, 1 - event.translationY / screenHeight);
+        scale.setValue(newScale);
+        opacity.setValue(Math.max(0, 1 - event.translationY / (screenHeight * 0.5)));
+      }
+    })
+    .onEnd((event) => {
+      if (isClosing) return;
+      // 处理上滑分享
+      if (event.translationY < SHARE_THRESHOLD && event.velocityY < 0) {
+        // 立即触发分享
+        handleShare();
+        // 同时执行回弹动画
+        Animated.parallel([
+          Animated.spring(translateY, {
+            toValue: 0,
+            damping: 15,
+            mass: 1,
+            stiffness: 150,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scale, {
+            toValue: 1,
+            damping: 15,
+            mass: 1,
+            stiffness: 150,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+      // 处理下滑关闭
+      else if (event.velocityY > 0 && event.translationY > SWIPE_THRESHOLD) {
+        handleClose();
+      }
+      // 回弹
+      else {
+        Animated.parallel([
+          Animated.spring(translateY, {
+            toValue: 0,
+            damping: 15,
+            mass: 1,
+            stiffness: 150,
+            useNativeDriver: true,
+          }),
+          Animated.spring(scale, {
+            toValue: 1,
+            damping: 15,
+            mass: 1,
+            stiffness: 150,
+            useNativeDriver: true,
+          }),
+          Animated.spring(opacity, {
+            toValue: 1,
+            damping: 15,
+            mass: 1,
+            stiffness: 150,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    });
+
   if (!meme) return null;
+
+  const animatedContainerStyle = {
+    transform: [
+      { translateY },
+      { scale },
+    ],
+    opacity,
+  };
 
   return (
     <Modal
       visible={visible}
       transparent={true}
-      animationType="fade"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={handleClose}
     >
       <GestureHandlerRootView style={styles.gestureRoot}>
         <GestureDetector gesture={gesture}>
           <View style={styles.container}>
-            <TouchableWithoutFeedback onPress={onClose}>
+            <TouchableWithoutFeedback onPress={handleClose}>
               <View style={styles.container}>
                 <TouchableOpacity
                   style={styles.closeButton}
-                  onPress={onClose}
+                  onPress={handleClose}
                 >
                   <Ionicons name="close" size={28} color="#fff" />
                 </TouchableOpacity>
 
                 <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-                  <View style={styles.imageWrapper}>
+                  <Animated.View style={[styles.imageWrapper, animatedContainerStyle, { width: imageSize.width, height: imageSize.height }]}>
                     <ViewShot
                       ref={viewShotRef}
                       options={{
@@ -110,15 +263,26 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
                         resizeMode="contain"
                       />
                     </ViewShot>
-                  </View>
+                  </Animated.View>
                 </TouchableWithoutFeedback>
 
                 <TouchableOpacity
                   style={styles.shareButton}
                   onPress={handleShare}
+                  disabled={isSharing}
                 >
                   <Ionicons name="share-outline" size={32} color="#fff" />
                 </TouchableOpacity>
+
+                <Animated.View style={[styles.shareHint, {
+                  opacity: Animated.multiply(opacity, translateY.interpolate({
+                    inputRange: [-100, 0],
+                    outputRange: [1, 0],
+                    extrapolate: 'clamp',
+                  })),
+                }]}>
+                  <Text style={styles.shareHintText}>上滑分享</Text>
+                </Animated.View>
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -134,13 +298,11 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   imageWrapper: {
-    width: screenWidth,
-    height: screenHeight * 0.7,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -176,5 +338,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  shareHint: {
+    position: 'absolute',
+    top: 100,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  shareHintText: {
+    color: '#fff',
+    fontSize: 14,
   },
 }); 
