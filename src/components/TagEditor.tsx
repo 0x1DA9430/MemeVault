@@ -7,6 +7,9 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StorageService } from '../services/storage';
@@ -110,7 +113,11 @@ export const TagEditor: React.FC<TagEditorProps> = ({
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+    >
       <View style={[styles.header, { 
         borderBottomColor: isDarkMode ? '#333' : '#f0f0f0',
         backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
@@ -132,7 +139,11 @@ export const TagEditor: React.FC<TagEditorProps> = ({
         </View>
       </View>
 
-      <ScrollView style={styles.tagContainer}>
+      <ScrollView 
+        style={styles.tagContainer}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.tagList}>
           {tags.map((tag, index) => (
             <View key={index} style={[
@@ -151,66 +162,71 @@ export const TagEditor: React.FC<TagEditorProps> = ({
         </View>
       </ScrollView>
 
-      <View style={[styles.inputContainer, { 
+      <View style={[styles.bottomContainer, { 
         borderTopColor: isDarkMode ? '#333' : '#f0f0f0',
         backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
       }]}>
-        <TextInput
-          style={[
-            styles.input,
+        {suggestions.length > 0 && (
+          <View style={[
+            styles.suggestionsContainer,
             {
+              backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
               borderColor: isDarkMode ? '#333' : '#ddd',
-              backgroundColor: isDarkMode ? '#333' : '#fff',
-              color: isDarkMode ? '#fff' : '#000',
             }
-          ]}
-          value={newTag}
-          onChangeText={handleInputChange}
-          placeholder="添加新标签"
-          placeholderTextColor={isDarkMode ? '#666' : '#999'}
-          maxLength={20}
-        />
+          ]}>
+            {suggestions.map((suggestion, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.suggestionItem,
+                  { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' },
+                  index === suggestions.length - 1 && { borderBottomWidth: 0 }
+                ]}
+                onPress={() => handleSuggestionPress(suggestion)}
+              >
+                <Text style={[
+                  styles.suggestionText,
+                  { color: isDarkMode ? '#fff' : '#000' }
+                ]}>{suggestion}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                borderColor: isDarkMode ? '#333' : '#ddd',
+                backgroundColor: isDarkMode ? '#333' : '#fff',
+                color: isDarkMode ? '#fff' : '#000',
+              }
+            ]}
+            value={newTag}
+            onChangeText={handleInputChange}
+            placeholder="添加新标签"
+            placeholderTextColor={isDarkMode ? '#666' : '#999'}
+            maxLength={20}
+            returnKeyType="done"
+            onSubmitEditing={handleAddTag}
+          />
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={handleAddTag}
+          >
+            <Text style={styles.addButtonText}>添加</Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
-          style={styles.addButton}
-          onPress={handleAddTag}
+          style={[styles.saveButton, Platform.OS === 'ios' && styles.saveButtonIOS]}
+          onPress={handleSave}
         >
-          <Text style={styles.addButtonText}>添加</Text>
+          <Text style={styles.saveButtonText}>保存</Text>
         </TouchableOpacity>
       </View>
-
-      {suggestions.length > 0 && (
-        <View style={[
-          styles.suggestionsContainer,
-          {
-            backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
-            borderColor: isDarkMode ? '#333' : '#ddd',
-          }
-        ]}>
-          {suggestions.map((suggestion, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.suggestionItem,
-                { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }
-              ]}
-              onPress={() => handleSuggestionPress(suggestion)}
-            >
-              <Text style={[
-                styles.suggestionText,
-                { color: isDarkMode ? '#fff' : '#000' }
-              ]}>{suggestion}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      <TouchableOpacity
-        style={styles.saveButton}
-        onPress={handleSave}
-      >
-        <Text style={styles.saveButtonText}>保存</Text>
-      </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -238,12 +254,14 @@ const styles = StyleSheet.create({
   },
   tagContainer: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 16,
+    paddingBottom: 32,
   },
   tagList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 16,
   },
   tagItem: {
     flexDirection: 'row',
@@ -261,10 +279,14 @@ const styles = StyleSheet.create({
   removeButton: {
     padding: 2,
   },
+  bottomContainer: {
+    borderTopWidth: 1,
+    paddingTop: 8,
+  },
   inputContainer: {
     flexDirection: 'row',
-    padding: 16,
-    borderTopWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   input: {
     flex: 1,
@@ -286,15 +308,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   suggestionsContainer: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 120,
     backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ddd',
-    maxHeight: 200,
+    maxHeight: 120,
+    marginHorizontal: 16,
+    marginBottom: 8,
   },
   suggestionItem: {
     padding: 12,
@@ -305,11 +325,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   saveButton: {
-    margin: 16,
+    marginHorizontal: 16,
+    marginVertical: 8,
     backgroundColor: '#007AFF',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  saveButtonIOS: {
+    marginBottom: 16,
   },
   saveButtonText: {
     color: '#fff',
