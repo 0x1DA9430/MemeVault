@@ -3,6 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as MediaLibrary from 'expo-media-library';
 import { Platform } from 'react-native';
 import { Meme, MemeCollection } from '../types/meme';
+import { TagService } from './tagService';
+import { SettingsService } from './settings';
+import { TagQueueService } from './tagQueue';
 
 const MEMES_STORAGE_KEY = '@meme_vault_memes';
 const COLLECTIONS_STORAGE_KEY = '@meme_vault_collections';
@@ -10,10 +13,21 @@ const COLLECTIONS_STORAGE_KEY = '@meme_vault_collections';
 export class StorageService {
   private static instance: StorageService;
   private memeDirectory: string;
+  private tagService: TagService;
+  private settingsService: SettingsService;
+  private tagQueueService: TagQueueService;
 
   private constructor() {
     this.memeDirectory = `${FileSystem.documentDirectory}memes/`;
+    this.tagService = TagService.getInstance();
+    this.settingsService = SettingsService.getInstance();
+    this.tagQueueService = TagQueueService.getInstance();
     this.ensureMemeDirectory();
+    
+    // 设置标签生成回调
+    this.tagQueueService.setOnTagsGenerated(async (memeId: string, tags: string[]) => {
+      await this.updateMemeTags(memeId, tags);
+    });
   }
 
   static getInstance(): StorageService {
@@ -54,11 +68,47 @@ export class StorageService {
       favorite: false
     };
 
+    const settings = await this.settingsService.getSettings();
+    if (settings.enabled) {
+      this.tagQueueService.addToQueue(meme);
+    }
+
     const memes = await this.getMemes();
     memes.push(meme);
     await this.saveMemes(memes);
 
     return meme;
+  }
+
+  async updateMemeTags(memeId: string, tags: string[]): Promise<void> {
+    const memes = await this.getMemes();
+    const index = memes.findIndex(m => m.id === memeId);
+    
+    if (index >= 0) {
+      memes[index].tags = await this.tagService.validateTags(tags);
+      memes[index].modifiedAt = new Date();
+      await this.saveMemes(memes);
+    }
+  }
+
+  async searchMemesByTags(tags: string[]): Promise<Meme[]> {
+    if (!tags.length) return this.getMemes();
+    
+    const memes = await this.getMemes();
+    return memes.filter(meme => 
+      tags.every(tag => meme.tags.includes(tag))
+    );
+  }
+
+  async getAllTags(): Promise<string[]> {
+    const memes = await this.getMemes();
+    const tagSet = new Set<string>();
+    
+    memes.forEach(meme => {
+      meme.tags.forEach(tag => tagSet.add(tag));
+    });
+    
+    return Array.from(tagSet).sort();
   }
 
   async saveToGallery(meme: Meme): Promise<void> {

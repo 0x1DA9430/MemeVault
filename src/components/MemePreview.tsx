@@ -22,12 +22,14 @@ import {
   Gesture,
 } from 'react-native-gesture-handler';
 import { Meme } from '../types/meme';
+import { TagEditor } from './TagEditor';
 
 interface MemePreviewProps {
   meme: Meme | null;
   visible: boolean;
   onClose: () => void;
   memes: Meme[];
+  onTagsUpdated?: () => void;
 }
 
 const screenWidth = Dimensions.get('window').width;
@@ -41,6 +43,7 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
   visible,
   onClose,
   memes,
+  onTagsUpdated,
 }) => {
   const viewShotRef = useRef<ViewShot>(null);
   const translateY = useRef(new Animated.Value(0)).current;
@@ -51,6 +54,7 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
   const [isSharing, setIsSharing] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(-1);
+  const [showTagEditor, setShowTagEditor] = useState(false);
 
   useEffect(() => {
     if (meme) {
@@ -348,13 +352,22 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
                   </Animated.View>
                 </TouchableWithoutFeedback>
 
-                <TouchableOpacity
-                  style={styles.shareButton}
-                  onPress={handleShare}
-                  disabled={isSharing}
-                >
-                  <Ionicons name="share-outline" size={32} color="#fff" />
-                </TouchableOpacity>
+                <View style={styles.bottomButtons}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={handleShare}
+                    disabled={isSharing}
+                  >
+                    <Ionicons name="share-outline" size={28} color="#fff" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => setShowTagEditor(true)}
+                  >
+                    <Ionicons name="pricetag-outline" size={28} color="#fff" />
+                  </TouchableOpacity>
+                </View>
 
                 <Animated.View style={[styles.shareHint, {
                   opacity: Animated.multiply(opacity, translateY.interpolate({
@@ -365,11 +378,41 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
                 }]}>
                   <Text style={styles.shareHintText}>上滑分享</Text>
                 </Animated.View>
+
+                {memes[currentIndex]?.tags.length > 0 && (
+                  <View style={styles.tagContainer}>
+                    {memes[currentIndex].tags.map((tag, index) => (
+                      <View key={index} style={styles.tagItem}>
+                        <Text style={styles.tagText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             </TouchableWithoutFeedback>
           </View>
         </GestureDetector>
       </GestureHandlerRootView>
+
+      <Modal
+        visible={showTagEditor}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTagEditor(false)}
+      >
+        <View style={styles.tagEditorContainer}>
+          {memes[currentIndex] && (
+            <TagEditor
+              meme={memes[currentIndex]}
+              onClose={() => setShowTagEditor(false)}
+              onTagsUpdated={() => {
+                setShowTagEditor(false);
+                onTagsUpdated?.();
+              }}
+            />
+          )}
+        </View>
+      </Modal>
     </Modal>
   );
 };
@@ -410,16 +453,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 1,
   },
-  shareButton: {
+  bottomButtons: {
     position: 'absolute',
     bottom: 40,
     left: 20,
+    flexDirection: 'row',
+  },
+  actionButton: {
     width: 50,
     height: 50,
     borderRadius: 25,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 16,
   },
   shareHint: {
     position: 'absolute',
@@ -433,5 +480,34 @@ const styles = StyleSheet.create({
   shareHintText: {
     color: '#fff',
     fontSize: 14,
+  },
+  tagContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 16,
+    justifyContent: 'center',
+  },
+  tagItem: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    margin: 4,
+  },
+  tagText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  tagEditorContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    marginTop: 100,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
   },
 }); 

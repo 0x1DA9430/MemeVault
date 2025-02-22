@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   StatusBar,
+  ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
@@ -15,6 +16,7 @@ import { MemeGrid } from '../components/MemeGrid';
 import { MemePreview } from '../components/MemePreview';
 import { Meme } from '../types/meme';
 import { Ionicons } from '@expo/vector-icons';
+import { TagQueueService } from '../services/tagQueue';
 
 interface Position {
   x: number;
@@ -30,7 +32,11 @@ export const HomeScreen: React.FC = () => {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedMemes, setSelectedMemes] = useState<Set<string>>(new Set());
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [filteredMemes, setFilteredMemes] = useState<Meme[]>([]);
   const storageService = StorageService.getInstance();
+  const tagQueueService = TagQueueService.getInstance();
 
   useEffect(() => {
     (async () => {
@@ -40,12 +46,35 @@ export const HomeScreen: React.FC = () => {
       }
       loadMemes();
     })();
+
+    // 添加标签更新监听器
+    const handleTagsUpdate = () => {
+      loadMemes();
+    };
+    tagQueueService.addTagsUpdateListener(handleTagsUpdate);
+
+    return () => {
+      tagQueueService.removeTagsUpdateListener(handleTagsUpdate);
+    };
   }, []);
+
+  useEffect(() => {
+    if (selectedTags.size === 0) {
+      setFilteredMemes(memes);
+    } else {
+      const filtered = memes.filter(meme =>
+        Array.from(selectedTags).every(tag => meme.tags.includes(tag))
+      );
+      setFilteredMemes(filtered);
+    }
+  }, [memes, selectedTags]);
 
   const loadMemes = async () => {
     try {
       const loadedMemes = await storageService.getAllMemes();
       setMemes(loadedMemes);
+      const tags = await storageService.getAllTags();
+      setAllTags(tags);
     } catch (error) {
       Alert.alert('错误', '加载图片失败');
     } finally {
@@ -146,6 +175,20 @@ export const HomeScreen: React.FC = () => {
     setSelectedMemes(allMemeIds);
   };
 
+  const toggleTag = (tag: string) => {
+    const newSelectedTags = new Set(selectedTags);
+    if (newSelectedTags.has(tag)) {
+      newSelectedTags.delete(tag);
+    } else {
+      newSelectedTags.add(tag);
+    }
+    setSelectedTags(newSelectedTags);
+  };
+
+  const clearTagFilter = () => {
+    setSelectedTags(new Set());
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -158,7 +201,7 @@ export const HomeScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      {isSelectionMode && (
+      {isSelectionMode ? (
         <View style={styles.selectionHeader}>
           <TouchableOpacity
             style={styles.headerButton}
@@ -186,10 +229,44 @@ export const HomeScreen: React.FC = () => {
             <Ionicons name="trash-outline" size={24} color="#FF3B30" />
           </TouchableOpacity>
         </View>
+      ) : (
+        <ScrollView
+          horizontal
+          style={styles.tagScrollView}
+          showsHorizontalScrollIndicator={false}
+        >
+          {selectedTags.size > 0 && (
+            <TouchableOpacity
+              style={styles.clearTagButton}
+              onPress={clearTagFilter}
+            >
+              <Ionicons name="close-circle" size={20} color="#666" />
+            </TouchableOpacity>
+          )}
+          {allTags.map((tag, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.tagButton,
+                selectedTags.has(tag) && styles.tagButtonSelected,
+              ]}
+              onPress={() => toggleTag(tag)}
+            >
+              <Text
+                style={[
+                  styles.tagButtonText,
+                  selectedTags.has(tag) && styles.tagButtonTextSelected,
+                ]}
+              >
+                {tag}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       )}
 
       <MemeGrid
-        memes={memes}
+        memes={filteredMemes}
         onMemePress={handleMemePress}
         onMemeLongPress={handleMemeLongPress}
         selectedMemes={selectedMemes}
@@ -208,6 +285,7 @@ export const HomeScreen: React.FC = () => {
         visible={previewVisible}
         onClose={handleClosePreview}
         memes={memes}
+        onTagsUpdated={loadMemes}
       />
     </View>
   );
@@ -277,5 +355,33 @@ const styles = StyleSheet.create({
   headerActionText: {
     fontSize: 14,
     color: '#007AFF',
+  },
+  tagScrollView: {
+    maxHeight: 50,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  tagButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
+    marginHorizontal: 4,
+    marginVertical: 8,
+  },
+  tagButtonSelected: {
+    backgroundColor: '#007AFF',
+  },
+  tagButtonText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  tagButtonTextSelected: {
+    color: '#fff',
+  },
+  clearTagButton: {
+    padding: 8,
+    marginLeft: 8,
+    justifyContent: 'center',
   },
 }); 
