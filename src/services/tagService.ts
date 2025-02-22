@@ -201,4 +201,13 @@ export class TagService {
     const uniqueTags = Array.from(new Set(validTags));
     return uniqueTags.slice(0, settings.maxTags);
   }
+
+  getTagCategories(): string[] {
+    return ['情绪', '角色', '场景', '动作', '其他'];
+  }
+
+  getTagsByCategory(category: string): string[] {
+    const allTags = this.tagNormalizer.getTagsByCategory(category);
+    return allTags;
+  }
 } 

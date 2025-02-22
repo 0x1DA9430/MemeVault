@@ -186,6 +186,12 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
           dialogTitle: '分享到微信',
         });
       }
+      
+      // 记录分享次数
+      await storageService.recordShare(meme.id);
+      if (onTagsUpdated) {
+        onTagsUpdated();
+      }
     } catch (error) {
       console.error('分享失败:', error);
     } finally {

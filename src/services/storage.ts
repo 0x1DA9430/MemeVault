@@ -12,6 +12,14 @@ import * as Crypto from 'expo-crypto';
 
 const MEMES_STORAGE_KEY = '@meme_vault_memes';
 const COLLECTIONS_STORAGE_KEY = '@meme_vault_collections';
+const SHARE_COUNTS_KEY = '@meme_vault_share_counts';
+const USAGE_RECORDS_KEY = '@meme_vault_usage_records';
+
+interface UsageRecord {
+  memeId: string;
+  timestamp: number;
+  type: 'share' | 'view' | 'favorite';
+}
 
 export class StorageService {
   private static instance: StorageService;
@@ -215,6 +223,7 @@ export class StorageService {
       memes[index].favorite = !memes[index].favorite;
       memes[index].modifiedAt = new Date();
       await this.saveMemes(memes);
+      await this.recordUsage(memeId, 'favorite');
     }
   }
 
@@ -329,5 +338,163 @@ export class StorageService {
 
     const updatedMemes = memes.filter(m => !memeIds.includes(m.id));
     await this.saveMemes(updatedMemes);
+  }
+
+  // 记录使用记录
+  async recordUsage(memeId: string, type: 'share' | 'view' | 'favorite'): Promise<void> {
+    try {
+      const records = await this.getUsageRecords();
+      records.push({
+        memeId,
+        timestamp: Date.now(),
+        type
+      });
+      await AsyncStorage.setItem(USAGE_RECORDS_KEY, JSON.stringify(records));
+    } catch (error) {
+      console.error('记录使用记录失败:', error);
+    }
+  }
+
+  // 获取所有使用记录
+  private async getUsageRecords(): Promise<UsageRecord[]> {
+    try {
+      const recordsJson = await AsyncStorage.getItem(USAGE_RECORDS_KEY);
+      return recordsJson ? JSON.parse(recordsJson) : [];
+    } catch (error) {
+      console.error('获取使用记录失败:', error);
+      return [];
+    }
+  }
+
+  // 获取每周使用统计
+  async getWeeklyStats(): Promise<{ date: string; count: number }[]> {
+    try {
+      const records = await this.getUsageRecords();
+      const now = new Date();
+      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); // 获取7天前的日期
+      weekStart.setHours(0, 0, 0, 0); // 设置为当天开始时间
+      
+      // 创建过去7天的统计数据
+      const stats = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date(weekStart);
+        date.setDate(date.getDate() + i);
+        return {
+          date: '周' + '日一二三四五六'[date.getDay()],
+          timestamp: date.getTime(),
+          count: 0
+        };
+      });
+
+      // 统计每天的使用次数
+      records.forEach(record => {
+        const recordDate = new Date(record.timestamp);
+        // 只统计最近7天的记录
+        if (recordDate >= weekStart && recordDate <= now) {
+          // 计算记录日期与起始日期的天数差
+          const dayDiff = Math.floor((recordDate.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000));
+          if (dayDiff >= 0 && dayDiff < 7) {
+            stats[dayDiff].count++;
+          }
+        }
+      });
+
+      // 返回按日期排序的统计数据
+      return stats;
+    } catch (error) {
+      console.error('获取每周统计失败:', error);
+      return [];
+    }
+  }
+
+  // 记录分享次数
+  async recordShare(memeId: string): Promise<void> {
+    try {
+      const shareCounts = await this.getShareCounts();
+      shareCounts[memeId] = (shareCounts[memeId] || 0) + 1;
+      await AsyncStorage.setItem(SHARE_COUNTS_KEY, JSON.stringify(shareCounts));
+      await this.recordUsage(memeId, 'share');
+    } catch (error) {
+      console.error('记录分享次数失败:', error);
+    }
+  }
+
+  // 获取所有分享次数
+  private async getShareCounts(): Promise<Record<string, number>> {
+    try {
+      const countsJson = await AsyncStorage.getItem(SHARE_COUNTS_KEY);
+      return countsJson ? JSON.parse(countsJson) : {};
+    } catch (error) {
+      console.error('获取分享次数失败:', error);
+      return {};
+    }
+  }
+
+  // 获取热门表情包
+  async getPopularMemes(): Promise<{ id: string; uri: string; useCount: number }[]> {
+    try {
+      const memes = await this.getMemes();
+      const shareCounts = await this.getShareCounts();
+
+      return memes
+        .map(meme => ({
+          id: meme.id,
+          uri: meme.uri,
+          useCount: shareCounts[meme.id] || 0
+        }))
+        .sort((a, b) => b.useCount - a.useCount)
+        .slice(0, 10);
+    } catch (error) {
+      console.error('获取热门表情包失败:', error);
+      return [];
+    }
+  }
+
+  // 获取表情包详细使用统计
+  async getMemeUsageStats(memeId: string): Promise<{
+    shareCount: number;
+    viewCount: number;
+    favoriteCount: number;
+  }> {
+    try {
+      const records = await this.getUsageRecords();
+      const memeRecords = records.filter(r => r.memeId === memeId);
+      
+      return {
+        shareCount: memeRecords.filter(r => r.type === 'share').length,
+        viewCount: memeRecords.filter(r => r.type === 'view').length,
+        favoriteCount: memeRecords.filter(r => r.type === 'favorite').length,
+      };
+    } catch (error) {
+      console.error('获取表情包使用统计失败:', error);
+      return { shareCount: 0, viewCount: 0, favoriteCount: 0 };
+    }
+  }
+
+  // 获取标签使用频率统计
+  async getTagUsageStats(): Promise<{ tag: string; count: number }[]> {
+    try {
+      const memes = await this.getMemes();
+      const records = await this.getUsageRecords();
+      const tagUsage = new Map<string, number>();
+
+      // 遍历所有使用记录
+      for (const record of records) {
+        const meme = memes.find(m => m.id === record.memeId);
+        if (meme) {
+          // 将该表情包的所有标签的使用次数都加1
+          meme.tags.forEach(tag => {
+            tagUsage.set(tag, (tagUsage.get(tag) || 0) + 1);
+          });
+        }
+      }
+
+      // 转换为数组并排序
+      return Array.from(tagUsage.entries())
+        .map(([tag, count]) => ({ tag, count }))
+        .sort((a, b) => b.count - a.count);
+    } catch (error) {
+      console.error('获取标签使用统计失败:', error);
+      return [];
+    }
   }
 }  

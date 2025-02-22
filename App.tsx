@@ -3,6 +3,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { UsageStatsScreen } from './src/screens/UsageStatsScreen';
 import { StatusBar } from 'expo-status-bar';
 import { StorageService } from './src/services/storage';
 import { SettingsService } from './src/services/settings';
@@ -12,7 +13,15 @@ import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 
-const Stack = createNativeStackNavigator();
+type RootStackParamList = {
+  Home: undefined;
+  Settings: undefined;
+  UsageStats: {
+    type: 'memes' | 'tags' | 'overview';
+  };
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const customDarkTheme = {
   ...DarkTheme,
@@ -94,6 +103,18 @@ function AppContent() {
               color: isDarkMode ? '#fff' : '#000',
             },
           }}
+        />
+        <Stack.Screen
+          name="UsageStats"
+          component={UsageStatsScreen}
+          options={({ route }) => ({
+            title: route.params?.type === 'memes' ? '热门表情包' :
+                  route.params?.type === 'tags' ? '标签分析' : '使用统计',
+            headerTitleStyle: {
+              fontWeight: 'bold',
+              color: isDarkMode ? '#fff' : '#000',
+            },
+          })}
         />
       </Stack.Navigator>
     </NavigationContainer>

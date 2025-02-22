@@ -16,8 +16,20 @@ import { StorageService } from '../services/storage';
 import { TagNormalizer } from '../services/tagNormalizer';
 import { AutoTagSettings, ThemeMode } from '../types/meme';
 import { useTheme } from '../contexts/ThemeContext';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-export const SettingsScreen: React.FC = () => {
+type RootStackParamList = {
+  Settings: undefined;
+  UsageStats: {
+    type: 'memes' | 'tags' | 'overview';
+  };
+};
+
+type SettingsScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Settings'>;
+};
+
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { isDarkMode, themeMode: currentThemeMode, setThemeMode } = useTheme();
   const [settings, setSettings] = useState<AutoTagSettings>({
     enabled: false,
@@ -295,6 +307,92 @@ export const SettingsScreen: React.FC = () => {
           点击按钮将自动合并相似的标签，例如"搞笑"和"幽默"会被合并为同一个标签。此操作不可撤销。
         </Text>
       </View>
+
+      <View style={[styles.section, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
+        <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>使用统计</Text>
+        
+        <TouchableOpacity
+          style={[
+            styles.statButton,
+            { backgroundColor: isDarkMode ? '#333' : '#f0f0f0' }
+          ]}
+          onPress={() => navigation.navigate('UsageStats', { type: 'memes' })}
+        >
+          <View style={styles.statButtonContent}>
+            <Ionicons 
+              name="bar-chart-outline" 
+              size={24} 
+              color={isDarkMode ? '#fff' : '#007AFF'} 
+            />
+            <Text style={[
+              styles.statButtonText,
+              { color: isDarkMode ? '#fff' : '#007AFF' }
+            ]}>热门表情包排行</Text>
+            <Ionicons 
+              name="chevron-forward" 
+              size={20} 
+              color={isDarkMode ? '#666' : '#999'} 
+              style={styles.statButtonArrow}
+            />
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.statButton,
+            { backgroundColor: isDarkMode ? '#333' : '#f0f0f0' }
+          ]}
+          onPress={() => navigation.navigate('UsageStats', { type: 'tags' })}
+        >
+          <View style={styles.statButtonContent}>
+            <Ionicons 
+              name="pricetags-outline" 
+              size={24} 
+              color={isDarkMode ? '#fff' : '#007AFF'} 
+            />
+            <Text style={[
+              styles.statButtonText,
+              { color: isDarkMode ? '#fff' : '#007AFF' }
+            ]}>标签使用分析</Text>
+            <Ionicons 
+              name="chevron-forward" 
+              size={20} 
+              color={isDarkMode ? '#666' : '#999'} 
+              style={styles.statButtonArrow}
+            />
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.statButton,
+            { backgroundColor: isDarkMode ? '#333' : '#f0f0f0' }
+          ]}
+          onPress={() => navigation.navigate('UsageStats', { type: 'overview' })}
+        >
+          <View style={styles.statButtonContent}>
+            <Ionicons 
+              name="stats-chart" 
+              size={24} 
+              color={isDarkMode ? '#fff' : '#007AFF'} 
+            />
+            <Text style={[
+              styles.statButtonText,
+              { color: isDarkMode ? '#fff' : '#007AFF' }
+            ]}>数据总览</Text>
+            <Ionicons 
+              name="chevron-forward" 
+              size={20} 
+              color={isDarkMode ? '#666' : '#999'} 
+              style={styles.statButtonArrow}
+            />
+          </View>
+        </TouchableOpacity>
+
+        <Text style={[styles.description, { color: isDarkMode ? '#666' : '#666' }]}>
+          查看表情包使用频率、标签分布等数据统计信息，帮助您更好地管理表情包。
+        </Text>
+      </View>
     </ScrollView>
   );
 };
@@ -409,5 +507,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 8,
     fontWeight: '500',
+  },
+  statButton: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  statButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statButtonText: {
+    fontSize: 16,
+    marginLeft: 12,
+    flex: 1,
+    fontWeight: '500',
+  },
+  statButtonArrow: {
+    marginLeft: 8,
   },
 }); 
