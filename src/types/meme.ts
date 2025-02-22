@@ -9,6 +9,7 @@ export interface Meme {
   width: number;
   height: number;
   favorite: boolean;
+  hash?: string;
 }
 
 export type MemeCollection = {

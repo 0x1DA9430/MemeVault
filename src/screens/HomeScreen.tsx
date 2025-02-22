@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
 import { StorageService } from '../services/storage';
 import { MemeGrid } from '../components/MemeGrid';
 import { MemePreview } from '../components/MemePreview';
@@ -42,6 +43,7 @@ export const HomeScreen: React.FC = () => {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [filteredMemes, setFilteredMemes] = useState<Meme[]>([]);
   const [isTagListExpanded, setIsTagListExpanded] = useState(false);
+  const [showingFavorites, setShowingFavorites] = useState(false);
   const storageService = StorageService.getInstance();
   const tagQueueService = TagQueueService.getInstance();
 
@@ -209,6 +211,78 @@ export const HomeScreen: React.FC = () => {
     setIsTagListExpanded(!isTagListExpanded);
   };
 
+  const handleToggleFavorites = async () => {
+    setLoading(true);
+    try {
+      if (showingFavorites) {
+        const allMemes = await storageService.getAllMemes();
+        setMemes(allMemes);
+        setShowingFavorites(false);
+      } else {
+        const favorites = await storageService.getFavoriteMemes();
+        setMemes(favorites);
+        setShowingFavorites(true);
+      }
+    } catch (error) {
+      Alert.alert('错误', '加载收藏失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportSelected = async () => {
+    if (selectedMemes.size === 0) {
+      Alert.alert('提示', '请先选择要导出的表情包');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const exportPath = await storageService.exportMemes(Array.from(selectedMemes));
+      await Sharing.shareAsync(exportPath, {
+        mimeType: 'application/zip',
+        dialogTitle: '导出表情包'
+      });
+      setIsSelectionMode(false);
+      setSelectedMemes(new Set());
+    } catch (error) {
+      Alert.alert('错误', '导出失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckDuplicates = async () => {
+    try {
+      setLoading(true);
+      const duplicates = await storageService.findDuplicateMemes();
+      
+      if (duplicates.length === 0) {
+        Alert.alert('提示', '未发现重复的表情包');
+        return;
+      }
+
+      // 选中所有重复的表情包
+      const duplicateIds = new Set<string>();
+      duplicates.forEach(group => {
+        group.duplicates.forEach(meme => {
+          duplicateIds.add(meme.id);
+        });
+      });
+
+      setSelectedMemes(duplicateIds);
+      setIsSelectionMode(true);
+      Alert.alert(
+        '发现重复表情包',
+        `发现 ${duplicateIds.size} 个重复的表情包，已为您选中，可以选择删除或导出。`
+      );
+    } catch (error) {
+      Alert.alert('错误', '检查重复失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
@@ -247,6 +321,16 @@ export const HomeScreen: React.FC = () => {
             >
               <Text style={[styles.headerActionText, { color: isDarkMode ? '#fff' : '#007AFF' }]}>全选</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.headerButton,
+                styles.headerActionButton,
+                { backgroundColor: isDarkMode ? '#333' : '#F0F0F0' }
+              ]}
+              onPress={handleExportSelected}
+            >
+              <Text style={[styles.headerActionText, { color: isDarkMode ? '#fff' : '#007AFF' }]}>导出</Text>
+            </TouchableOpacity>
           </View>
           
           <TouchableOpacity
@@ -257,64 +341,86 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={[styles.tagSection, {
+        <View style={[styles.actionHeader, {
           backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
           borderBottomColor: isDarkMode ? '#333' : '#E5E5E5',
         }]}>
-          <View style={styles.tagHeader}>
-            <Text style={[styles.tagHeaderText, { color: isDarkMode ? '#fff' : '#000' }]}>
-              标签过滤
-            </Text>
-            <TouchableOpacity onPress={toggleTagList} style={styles.expandButton}>
-              <Ionicons
-                name={isTagListExpanded ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color={isDarkMode ? '#fff' : '#666'}
-              />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView
-            style={[
-              styles.tagScrollView,
-              { maxHeight: isTagListExpanded ? 200 : 50 }
-            ]}
-            contentContainerStyle={styles.tagScrollContent}
-            showsVerticalScrollIndicator={isTagListExpanded}
-            showsHorizontalScrollIndicator={false}
-            horizontal={!isTagListExpanded}
+          <TouchableOpacity
+            style={[styles.actionButton, showingFavorites && styles.actionButtonActive]}
+            onPress={handleToggleFavorites}
           >
-            {selectedTags.size > 0 && (
-              <TouchableOpacity
-                style={styles.clearTagButton}
-                onPress={clearTagFilter}
-              >
-                <Ionicons name="close-circle" size={20} color={isDarkMode ? '#fff' : '#666'} />
-              </TouchableOpacity>
-            )}
+            <Ionicons 
+              name={showingFavorites ? "star" : "star-outline"} 
+              size={20} 
+              color={showingFavorites ? "#FFD700" : (isDarkMode ? '#fff' : '#666')} 
+            />
+            <Text style={[
+              styles.actionButtonText,
+              { color: isDarkMode ? '#fff' : '#666' },
+              showingFavorites && styles.actionButtonTextActive
+            ]}>收藏</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, isTagListExpanded && styles.actionButtonActive]}
+            onPress={toggleTagList}
+          >
+            <Ionicons 
+              name="pricetag-outline" 
+              size={20} 
+              color={isDarkMode ? '#fff' : '#666'} 
+            />
+            <Text style={[
+              styles.actionButtonText,
+              { color: isDarkMode ? '#fff' : '#666' },
+              isTagListExpanded && styles.actionButtonTextActive
+            ]}>标签</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleCheckDuplicates}
+          >
+            <Ionicons 
+              name="copy-outline" 
+              size={20} 
+              color={isDarkMode ? '#fff' : '#666'} 
+            />
+            <Text style={[
+              styles.actionButtonText,
+              { color: isDarkMode ? '#fff' : '#666' }
+            ]}>查重</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isTagListExpanded && (
+        <ScrollView 
+          style={[styles.tagSection, { 
+            borderBottomColor: isDarkMode ? '#333' : '#E5E5E5',
+            backgroundColor: isDarkMode ? '#1c1c1c' : '#fff'
+          }]}
+        >
+          <View style={styles.tagScrollContent}>
             {allTags.map((tag, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
                   styles.tagButton,
                   { backgroundColor: isDarkMode ? '#333' : '#F0F0F0' },
-                  selectedTags.has(tag) && styles.tagButtonSelected,
+                  selectedTags.has(tag) && styles.tagButtonSelected
                 ]}
                 onPress={() => toggleTag(tag)}
               >
-                <Text
-                  style={[
-                    styles.tagButtonText,
-                    { color: isDarkMode ? '#fff' : '#666' },
-                    selectedTags.has(tag) && styles.tagButtonTextSelected,
-                  ]}
-                >
-                  {tag}
-                </Text>
+                <Text style={[
+                  styles.tagButtonText,
+                  { color: isDarkMode ? '#fff' : '#666' },
+                  selectedTags.has(tag) && styles.tagButtonTextSelected
+                ]}>{tag}</Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
-        </View>
+          </View>
+        </ScrollView>
       )}
 
       <MemeGrid
@@ -409,6 +515,7 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
   tagSection: {
+    maxHeight: 200,
     borderBottomWidth: 1,
   },
   tagHeader: {
@@ -437,7 +544,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: '#F0F0F0',
     marginHorizontal: 4,
     marginVertical: 4,
   },
@@ -446,7 +552,6 @@ const styles = StyleSheet.create({
   },
   tagButtonText: {
     fontSize: 14,
-    color: '#666',
   },
   tagButtonTextSelected: {
     color: '#fff',
@@ -455,5 +560,28 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: 8,
     justifyContent: 'center',
+  },
+  actionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderBottomWidth: 1,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  actionButtonActive: {
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+  },
+  actionButtonText: {
+    fontSize: 14,
+    marginLeft: 4,
+  },
+  actionButtonTextActive: {
+    color: '#FFD700',
   },
 }); 

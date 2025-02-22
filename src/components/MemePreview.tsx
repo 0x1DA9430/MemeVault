@@ -23,6 +23,7 @@ import {
 } from 'react-native-gesture-handler';
 import { Meme } from '../types/meme';
 import { TagEditor } from './TagEditor';
+import { StorageService } from '../services/storage';
 
 interface MemePreviewProps {
   meme: Meme | null;
@@ -55,6 +56,7 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
   const [isClosing, setIsClosing] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [showTagEditor, setShowTagEditor] = useState(false);
+  const storageService = StorageService.getInstance();
 
   useEffect(() => {
     if (meme) {
@@ -188,6 +190,18 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
       console.error('分享失败:', error);
     } finally {
       setIsSharing(false);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!meme) return;
+    try {
+      await storageService.toggleFavorite(meme.id);
+      if (onTagsUpdated) {
+        onTagsUpdated();
+      }
+    } catch (error) {
+      console.error('切换收藏状态失败:', error);
     }
   };
 
@@ -359,6 +373,17 @@ export const MemePreview: React.FC<MemePreviewProps> = ({
                     disabled={isSharing}
                   >
                     <Ionicons name="share-outline" size={28} color="#fff" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={handleToggleFavorite}
+                  >
+                    <Ionicons 
+                      name={memes[currentIndex]?.favorite ? "star" : "star-outline"} 
+                      size={28} 
+                      color={memes[currentIndex]?.favorite ? "#FFD700" : "#fff"} 
+                    />
                   </TouchableOpacity>
 
                   <TouchableOpacity

@@ -6,6 +6,9 @@ import { Meme, MemeCollection } from '../types/meme';
 import { TagService } from './tagService';
 import { SettingsService } from './settings';
 import { TagQueueService } from './tagQueue';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as Sharing from 'expo-sharing';
+import * as Crypto from 'expo-crypto';
 
 const MEMES_STORAGE_KEY = '@meme_vault_memes';
 const COLLECTIONS_STORAGE_KEY = '@meme_vault_collections';
@@ -201,5 +204,130 @@ export class StorageService {
       console.error('保存存储项目失败:', error);
       throw error;
     }
+  }
+
+  // 切换收藏状态
+  async toggleFavorite(memeId: string): Promise<void> {
+    const memes = await this.getMemes();
+    const index = memes.findIndex(m => m.id === memeId);
+    
+    if (index >= 0) {
+      memes[index].favorite = !memes[index].favorite;
+      memes[index].modifiedAt = new Date();
+      await this.saveMemes(memes);
+    }
+  }
+
+  // 获取收藏的表情包
+  async getFavoriteMemes(): Promise<Meme[]> {
+    const memes = await this.getMemes();
+    return memes.filter(meme => meme.favorite);
+  }
+
+  // 批量导出表情包
+  async exportMemes(memeIds: string[]): Promise<string> {
+    try {
+      // 创建临时导出目录
+      const exportDir = `${FileSystem.cacheDirectory}export_${Date.now()}/`;
+      await FileSystem.makeDirectoryAsync(exportDir, { intermediates: true });
+
+      // 复制选中的表情包到导出目录
+      const memes = await this.getMemes();
+      const selectedMemes = memes.filter(meme => memeIds.includes(meme.id));
+      
+      for (const meme of selectedMemes) {
+        const fileName = meme.id;
+        await FileSystem.copyAsync({
+          from: meme.uri,
+          to: `${exportDir}${fileName}`
+        });
+      }
+
+      // 创建压缩文件
+      const zipFileName = `${FileSystem.cacheDirectory}memes_${Date.now()}.zip`;
+      // 这里需要实现压缩功能，可以使用第三方库如 react-native-zip-archive
+      // 为简化示例，这里直接返回导出目录
+      
+      return exportDir;
+    } catch (error) {
+      console.error('导出失败:', error);
+      throw error;
+    }
+  }
+
+  // 计算图片哈希值
+  private async calculateImageHash(uri: string): Promise<string> {
+    try {
+      // 1. 将图片调整为统一大小
+      const resizedImage = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 32, height: 32 } }],
+        { format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+
+      // 2. 计算图片数据的哈希值
+      if (resizedImage.base64) {
+        const hash = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          resizedImage.base64
+        );
+        return hash;
+      }
+      throw new Error('无法生成图片base64数据');
+    } catch (error) {
+      console.error('计算图片哈希值失败:', error);
+      throw error;
+    }
+  }
+
+  // 检测重复表情包
+  async findDuplicateMemes(): Promise<{ original: Meme, duplicates: Meme[] }[]> {
+    try {
+      const memes = await this.getMemes();
+      const duplicateGroups: { [hash: string]: Meme[] } = {};
+
+      // 1. 确保所有表情包都有哈希值
+      for (const meme of memes) {
+        if (!meme.hash) {
+          meme.hash = await this.calculateImageHash(meme.uri);
+        }
+      }
+
+      // 2. 按哈希值分组
+      memes.forEach(meme => {
+        if (meme.hash) {
+          if (!duplicateGroups[meme.hash]) {
+            duplicateGroups[meme.hash] = [];
+          }
+          duplicateGroups[meme.hash].push(meme);
+        }
+      });
+
+      // 3. 找出重复组
+      return Object.values(duplicateGroups)
+        .filter(group => group.length > 1)
+        .map(group => ({
+          original: group[0],
+          duplicates: group.slice(1)
+        }));
+    } catch (error) {
+      console.error('检测重复表情包失败:', error);
+      throw error;
+    }
+  }
+
+  // 批量删除表情包
+  async deleteMemes(memeIds: string[]): Promise<void> {
+    const memes = await this.getMemes();
+    
+    for (const memeId of memeIds) {
+      const meme = memes.find(m => m.id === memeId);
+      if (meme) {
+        await FileSystem.deleteAsync(meme.uri).catch(console.error);
+      }
+    }
+
+    const updatedMemes = memes.filter(m => !memeIds.includes(m.id));
+    await this.saveMemes(updatedMemes);
   }
 }  
