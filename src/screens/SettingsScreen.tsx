@@ -23,6 +23,7 @@ type RootStackParamList = {
   UsageStats: {
     type: 'memes' | 'tags' | 'overview';
   };
+  CloudStorage: undefined;
 };
 
 type SettingsScreenProps = {
@@ -305,6 +306,40 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
 
         <Text style={[styles.description, { color: isDarkMode ? '#666' : '#666' }]}>
           点击按钮将自动合并相似的标签，例如"搞笑"和"幽默"会被合并为同一个标签。此操作不可撤销。
+        </Text>
+      </View>
+
+      <View style={[styles.section, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
+        <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>云存储</Text>
+        
+        <TouchableOpacity
+          style={[
+            styles.statButton,
+            { backgroundColor: isDarkMode ? '#333' : '#f0f0f0' }
+          ]}
+          onPress={() => navigation.navigate('CloudStorage')}
+        >
+          <View style={styles.statButtonContent}>
+            <Ionicons 
+              name="cloud-upload-outline" 
+              size={24} 
+              color={isDarkMode ? '#fff' : '#007AFF'} 
+            />
+            <Text style={[
+              styles.statButtonText,
+              { color: isDarkMode ? '#fff' : '#007AFF' }
+            ]}>云存储设置</Text>
+            <Ionicons 
+              name="chevron-forward" 
+              size={20} 
+              color={isDarkMode ? '#666' : '#999'} 
+              style={styles.statButtonArrow}
+            />
+          </View>
+        </TouchableOpacity>
+
+        <Text style={[styles.description, { color: isDarkMode ? '#666' : '#666' }]}>
+          配置云存储服务，自动备份您的表情包到云端。支持多种免费图床服务。
         </Text>
       </View>
 

@@ -202,6 +202,13 @@ export class TagService {
     return uniqueTags.slice(0, settings.maxTags);
   }
 
+  // 从图片中移除所有标签
+  async removeTagsFromMeme(memeId: string): Promise<void> {
+    // 标签服务只负责验证和规范化标签
+    // 实际的标签存储和删除由StorageService处理
+    return Promise.resolve();
+  }
+
   getTagCategories(): string[] {
     return ['情绪', '角色', '场景', '动作', '其他'];
   }

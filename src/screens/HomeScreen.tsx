@@ -23,6 +23,7 @@ import { Meme } from '../types/meme';
 import { Ionicons } from '@expo/vector-icons';
 import { TagQueueService } from '../services/tagQueue';
 import { useTheme } from '../contexts/ThemeContext';
+import { globalEventEmitter } from './CloudStorageScreen';
 
 interface Position {
   x: number;
@@ -70,8 +71,12 @@ export const HomeScreen: React.FC = () => {
     };
     tagQueueService.addTagsUpdateListener(handleTagsUpdate);
 
+    // 添加云端恢复监听器
+    globalEventEmitter.on('memesUpdated', loadMemes);
+
     return () => {
       tagQueueService.removeTagsUpdateListener(handleTagsUpdate);
+      globalEventEmitter.off('memesUpdated', loadMemes);
     };
   }, []);
 

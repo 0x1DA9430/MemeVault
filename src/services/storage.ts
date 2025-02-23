@@ -144,7 +144,7 @@ export class StorageService {
     }
   }
 
-  private async saveMemes(memes: Meme[]): Promise<void> {
+  async saveMemes(memes: Meme[]): Promise<void> {
     try {
       await AsyncStorage.setItem(MEMES_STORAGE_KEY, JSON.stringify(memes));
     } catch (error) {
@@ -157,7 +157,13 @@ export class StorageService {
     const meme = memes.find(m => m.id === memeId);
     
     if (meme) {
+      // 删除图片文件
       await FileSystem.deleteAsync(meme.uri);
+      
+      // 清理标签
+      await this.tagService.removeTagsFromMeme(memeId);
+      
+      // 从memes列表中移除
       const updatedMemes = memes.filter(m => m.id !== memeId);
       await this.saveMemes(updatedMemes);
     }
@@ -332,7 +338,10 @@ export class StorageService {
     for (const memeId of memeIds) {
       const meme = memes.find(m => m.id === memeId);
       if (meme) {
+        // 删除图片文件
         await FileSystem.deleteAsync(meme.uri).catch(console.error);
+        // 清理标签
+        await this.tagService.removeTagsFromMeme(memeId);
       }
     }
 

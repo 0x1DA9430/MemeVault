@@ -12,6 +12,7 @@ import { TagQueueService } from './src/services/tagQueue';
 import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { CloudStorageScreen } from './src/screens/CloudStorageScreen';
 
 type RootStackParamList = {
   Home: undefined;
@@ -19,6 +20,7 @@ type RootStackParamList = {
   UsageStats: {
     type: 'memes' | 'tags' | 'overview';
   };
+  CloudStorage: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -98,6 +100,17 @@ function AppContent() {
           component={SettingsScreen}
           options={{
             title: '设置',
+            headerTitleStyle: {
+              fontWeight: 'bold',
+              color: isDarkMode ? '#fff' : '#000',
+            },
+          }}
+        />
+        <Stack.Screen
+          name="CloudStorage"
+          component={CloudStorageScreen}
+          options={{
+            title: '云存储设置',
             headerTitleStyle: {
               fontWeight: 'bold',
               color: isDarkMode ? '#fff' : '#000',
