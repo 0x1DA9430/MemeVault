@@ -38,6 +38,7 @@ export const CloudStorageScreen: React.FC = () => {
     enabled: false,
     type: 'imgur',
     autoSync: false,
+    syncInterval: 120,  // 默认120分钟
     syncOnWifi: true,
     maxStorageSize: 1024, // 默认1GB
     compressionQuality: 0.8,
@@ -297,32 +298,53 @@ export const CloudStorageScreen: React.FC = () => {
 
   const renderConfigSection = () => (
     <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>基本配置</Text>
+      <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>基本设置</Text>
       
-      <View style={styles.row}>
-        <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>启用云同步</Text>
+      <View style={styles.switchGroup}>
+        <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>启用云存储</Text>
         <Switch
           value={config.enabled}
           onValueChange={(value) => setConfig({ ...config, enabled: value })}
-          trackColor={{ false: isDarkMode ? '#333' : '#e0e0e0', true: '#34C759' }}
         />
       </View>
 
-      <View style={styles.row}>
+      <View style={styles.switchGroup}>
         <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>自动同步</Text>
         <Switch
           value={config.autoSync}
           onValueChange={(value) => setConfig({ ...config, autoSync: value })}
-          trackColor={{ false: isDarkMode ? '#333' : '#e0e0e0', true: '#34C759' }}
         />
       </View>
 
-      <View style={styles.row}>
-        <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>仅WiFi同步</Text>
+      {config.autoSync && (
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>同步频率（分钟）</Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                borderColor: isDarkMode ? '#333' : '#ddd',
+                backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
+                color: isDarkMode ? '#fff' : '#000',
+              }
+            ]}
+            value={config.syncInterval.toString()}
+            onChangeText={(text) => {
+              const interval = parseInt(text) || 120;
+              setConfig({ ...config, syncInterval: Math.max(1, interval) });  // 最小1分钟
+            }}
+            keyboardType="number-pad"
+            placeholder="默认120分钟"
+            placeholderTextColor={isDarkMode ? '#666' : '#999'}
+          />
+        </View>
+      )}
+
+      <View style={styles.switchGroup}>
+        <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>仅在WiFi下同步</Text>
         <Switch
           value={config.syncOnWifi}
           onValueChange={(value) => setConfig({ ...config, syncOnWifi: value })}
-          trackColor={{ false: isDarkMode ? '#333' : '#e0e0e0', true: '#34C759' }}
         />
       </View>
 
@@ -541,5 +563,11 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 8,
+  },
+  switchGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
   },
 }); 

@@ -64,6 +64,7 @@ export interface CloudStorageConfig {
   githubRepo?: string;
   githubToken?: string;
   autoSync: boolean;
+  syncInterval: number;  // 自动同步间隔（分钟）
   syncOnWifi: boolean;
   maxStorageSize: number;  // 最大存储空间（MB）
   compressionQuality: number;  // 图片压缩质量 (0-1)

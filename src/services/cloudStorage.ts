@@ -19,6 +19,7 @@ export class CloudStorageService {
     enabled: false,
     type: 'imgur',
     autoSync: false,
+    syncInterval: 120,  // 默认120分钟
     syncOnWifi: true,
     maxStorageSize: 1024, // 默认1GB
     compressionQuality: 0.8,
