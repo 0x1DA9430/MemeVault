@@ -349,6 +349,53 @@ export class StorageService {
     await this.saveMemes(updatedMemes);
   }
 
+  /**
+   * 删除所有数据，包括所有表情包、收藏夹和使用记录
+   * @param onComplete 删除完成后的回调函数，用于通知UI刷新
+   */
+  async deleteAllData(onComplete?: () => void): Promise<void> {
+    try {
+      // 获取所有表情包
+      const memes = await this.getMemes();
+      
+      // 删除所有表情包文件
+      for (const meme of memes) {
+        await FileSystem.deleteAsync(meme.uri).catch(console.error);
+      }
+      
+      // 清空表情包存储
+      await AsyncStorage.setItem(MEMES_STORAGE_KEY, JSON.stringify([]));
+      
+      // 清空收藏夹
+      await AsyncStorage.setItem(COLLECTIONS_STORAGE_KEY, JSON.stringify([]));
+      
+      // 清空使用记录
+      await AsyncStorage.setItem(USAGE_RECORDS_KEY, JSON.stringify([]));
+      
+      // 清空分享计数
+      await AsyncStorage.setItem(SHARE_COUNTS_KEY, JSON.stringify({}));
+      
+      // 清空标签数据
+      await this.tagService.clearAllTags();
+      
+      // 重置设置为默认值
+      await this.settingsService.resetSettings();
+      
+      // 确保表情包目录存在但为空
+      await this.ensureMemeDirectory();
+      
+      console.log('所有数据已删除');
+      
+      // 调用回调函数通知UI刷新
+      if (onComplete) {
+        onComplete();
+      }
+    } catch (error) {
+      console.error('删除所有数据时出错:', error);
+      throw error;
+    }
+  }
+
   // 记录使用记录
   async recordUsage(memeId: string, type: 'share' | 'view' | 'favorite'): Promise<void> {
     try {
@@ -438,7 +485,7 @@ export class StorageService {
     }
   }
 
-  // 获取热门表情包
+  // 获取常用表情包
   async getPopularMemes(): Promise<{ id: string; uri: string; useCount: number }[]> {
     try {
       const memes = await this.getMemes();
@@ -453,7 +500,7 @@ export class StorageService {
         .sort((a, b) => b.useCount - a.useCount)
         .slice(0, 10);
     } catch (error) {
-      console.error('获取热门表情包失败:', error);
+      console.error('获取常用表情包失败:', error);
       return [];
     }
   }

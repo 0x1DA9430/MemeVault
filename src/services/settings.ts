@@ -57,4 +57,18 @@ export class SettingsService {
     }
     return this.settings;
   }
+
+  /**
+   * 重置所有设置为默认值
+   */
+  async resetSettings(): Promise<void> {
+    try {
+      this.settings = { ...DEFAULT_SETTINGS };
+      await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(this.settings));
+      console.log('所有设置已重置为默认值');
+    } catch (error) {
+      console.error('重置设置失败:', error);
+      throw error;
+    }
+  }
 } 

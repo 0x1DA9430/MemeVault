@@ -102,7 +102,7 @@ export const UsageStatsScreen: React.FC<UsageStatsScreenProps> = ({ route, navig
         };
       });
 
-      // 获取热门表情包数据
+      // 获取常用表情包数据
       const topMemes = await storageService.getPopularMemes();
 
       // 获取标签使用频率
@@ -223,7 +223,7 @@ export const UsageStatsScreen: React.FC<UsageStatsScreenProps> = ({ route, navig
 
   const renderPopularMemes = () => (
     <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>热门表情包</Text>
+      <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>常用表情包</Text>
       <FlatList
         data={stats.topMemes}
         renderItem={renderMemeItem}

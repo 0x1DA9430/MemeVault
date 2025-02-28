@@ -217,4 +217,18 @@ export class TagService {
     const allTags = this.tagNormalizer.getTagsByCategory(category);
     return allTags;
   }
+  
+  /**
+   * 清除所有标签数据
+   */
+  async clearAllTags(): Promise<void> {
+    try {
+      // 清除标签规范化器中的自定义映射
+      await this.tagNormalizer.clearAllMappings();
+      console.log('所有标签数据已清除');
+    } catch (error) {
+      console.error('清除标签数据时出错:', error);
+      throw error;
+    }
+  }
 } 

@@ -24,6 +24,7 @@ type RootStackParamList = {
     type: 'memes' | 'tags' | 'overview';
   };
   CloudStorage: undefined;
+  Home: undefined;
 };
 
 type SettingsScreenProps = {
@@ -40,6 +41,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isMergingTags, setIsMergingTags] = useState(false);
+  const [isDeletingAllData, setIsDeletingAllData] = useState(false);
   const settingsService = SettingsService.getInstance();
   const storageService = StorageService.getInstance();
   const tagNormalizer = TagNormalizer.getInstance();
@@ -151,6 +153,50 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
         }
       ]
     );
+  };
+
+  const confirmDeleteAllData = () => {
+    Alert.alert(
+      '警告',
+      '此操作将删除所有表情包、使用记录和设置，且无法恢复。确定要继续吗？',
+      [
+        {
+          text: '取消',
+          style: 'cancel',
+        },
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: handleDeleteAllData,
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const handleDeleteAllData = async () => {
+    try {
+      setIsDeletingAllData(true);
+      await storageService.deleteAllData(() => {
+        console.log('数据删除完成，准备刷新UI');
+      });
+      Alert.alert('成功', '所有数据已删除', [
+        {
+          text: '确定',
+          onPress: () => {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            });
+          }
+        }
+      ]);
+    } catch (error) {
+      Alert.alert('错误', '删除数据失败');
+      console.error('删除所有数据时出错:', error);
+    } finally {
+      setIsDeletingAllData(false);
+    }
   };
 
   return (
@@ -269,7 +315,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
         </View>
 
         <Text style={[styles.description, { color: isDarkMode ? '#666' : '#666' }]}>
-          启用后，系统将在导入新图片时自动分析图片内容并生成标签。您随时可以手动编辑这些标签。
+          启用后，系统将在导入新图片时自动分析图片内容并生成标签（最多6个）。您随时可以手动编辑这些标签。
         </Text>
       </View>
 
@@ -362,7 +408,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
             <Text style={[
               styles.statButtonText,
               { color: isDarkMode ? '#fff' : '#007AFF' }
-            ]}>热门表情包排行</Text>
+            ]}>常用表情包排行</Text>
             <Ionicons 
               name="chevron-forward" 
               size={20} 
@@ -426,6 +472,40 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
 
         <Text style={[styles.description, { color: isDarkMode ? '#666' : '#666' }]}>
           查看表情包使用频率、标签分布等数据统计信息，帮助您更好地管理表情包。
+        </Text>
+      </View>
+
+      <View style={[styles.section, { borderBottomColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
+        <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>危险操作</Text>
+        
+        <TouchableOpacity
+          style={[
+            styles.mergeButton,
+            { backgroundColor: isDarkMode ? '#333' : '#f0f0f0' },
+            isDeletingAllData && { opacity: 0.5 }
+          ]}
+          onPress={confirmDeleteAllData}
+          disabled={isDeletingAllData}
+        >
+          <View style={styles.mergeButtonContent}>
+            {isDeletingAllData ? (
+              <ActivityIndicator size="small" color={isDarkMode ? '#ff453a' : '#FF3B30'} />
+            ) : (
+              <Ionicons 
+                name="trash-outline" 
+                size={24} 
+                color={isDarkMode ? '#ff453a' : '#FF3B30'} 
+              />
+            )}
+            <Text style={[
+              styles.mergeButtonText,
+              { color: isDarkMode ? '#ff453a' : '#FF3B30' }
+            ]}>删除所有数据</Text>
+          </View>
+        </TouchableOpacity>
+
+        <Text style={[styles.description, { color: isDarkMode ? '#666' : '#666' }]}>
+          此操作将删除所有表情包、使用记录和设置，且无法恢复。请谨慎操作。
         </Text>
       </View>
     </ScrollView>

@@ -286,4 +286,20 @@ export class TagNormalizer {
       .filter(mapping => mapping.category === category)
       .map(mapping => mapping.standard);
   }
+
+  /**
+   * 清除所有自定义标签映射，恢复到初始状态
+   */
+  public async clearAllMappings(): Promise<void> {
+    try {
+      // 重置为初始标签映射
+      this.tagMappings = [...INITIAL_TAG_MAPPINGS];
+      // 保存到存储
+      await this.saveMappings();
+      console.log('所有自定义标签映射已清除');
+    } catch (error) {
+      console.error('清除标签映射时出错:', error);
+      throw error;
+    }
+  }
 } 

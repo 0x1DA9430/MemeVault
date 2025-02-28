@@ -121,7 +121,7 @@ function AppContent() {
           name="UsageStats"
           component={UsageStatsScreen}
           options={({ route }) => ({
-            title: route.params?.type === 'memes' ? '热门表情包' :
+            title: route.params?.type === 'memes' ? '常用表情包' :
                   route.params?.type === 'tags' ? '标签分析' : '使用统计',
             headerTitleStyle: {
               fontWeight: 'bold',
