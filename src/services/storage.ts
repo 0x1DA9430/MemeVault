@@ -258,12 +258,22 @@ export class StorageService {
         });
       }
 
-      // 创建压缩文件
+      // 使用expo-file-system创建压缩文件
       const zipFileName = `${FileSystem.cacheDirectory}memes_${Date.now()}.zip`;
-      // 这里需要实现压缩功能，可以使用第三方库如 react-native-zip-archive
-      // 为简化示例，这里直接返回导出目录
+      await FileSystem.downloadAsync(
+        `file://${exportDir}`,
+        zipFileName,
+        {
+          headers: {
+            "Content-Type": "application/zip"
+          }
+        }
+      );
+
+      // 清理临时导出目录
+      await FileSystem.deleteAsync(exportDir, { idempotent: true });
       
-      return exportDir;
+      return zipFileName;
     } catch (error) {
       console.error('导出失败:', error);
       throw error;
