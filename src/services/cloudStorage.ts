@@ -20,8 +20,6 @@ export class CloudStorageService {
     type: 'imgur',
     autoSync: false,
     syncInterval: 120,  // 默认120分钟
-    syncOnWifi: true,
-    maxStorageSize: 1024, // 默认1GB
     compressionQuality: 0.8,
     deduplication: true,
   };
@@ -562,21 +560,8 @@ export class CloudStorageService {
   async cleanupCloudStorage(): Promise<void> {
     if (!this.config.enabled) return;
 
-    const totalSize = Array.from(this.cloudIndex.values())
-      .reduce((sum, meme) => sum + meme.size, 0);
-
-    if (totalSize > this.config.maxStorageSize * 1024 * 1024) {
-      // 按修改时间排序，删除最旧的文件
-      const sortedMemes = Array.from(this.cloudIndex.values())
-        .sort((a, b) => new Date(a.modifiedAt).getTime() - new Date(b.modifiedAt).getTime());
-
-      while (this.syncStats.totalSize > this.config.maxStorageSize * 1024 * 1024 && sortedMemes.length > 0) {
-        const oldestMeme = sortedMemes.shift();
-        if (oldestMeme) {
-          await this.deleteFromCloud(oldestMeme.id);
-        }
-      }
-    }
+    // 不再需要清理存储空间
+    return;
   }
 
   // 从云端删除
@@ -754,17 +739,10 @@ export class CloudStorageService {
   }
 
   private async processSyncQueue() {
-    if (this.isSyncing || this.syncQueue.length === 0 || !this.config.enabled) {
-      return;
-    }
+    if (this.isSyncing) return;
 
-    // 检查是否符合同步条件
-    if (this.config.syncOnWifi) {
-      const netInfo = await NetInfo.fetch();
-      if (netInfo.type !== 'wifi') {
-        return;
-      }
-    }
+    // 提醒用户注意流量使用
+    console.warn('开始同步，请注意移动数据流量的使用');
 
     this.isSyncing = true;
     const storageService = StorageService.getInstance();

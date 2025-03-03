@@ -39,8 +39,6 @@ export const CloudStorageScreen: React.FC = () => {
     type: 'imgur',
     autoSync: false,
     syncInterval: 120,  // 默认120分钟
-    syncOnWifi: true,
-    maxStorageSize: 1024, // 默认1GB
     compressionQuality: 0.8,
     deduplication: true,
   });
@@ -134,7 +132,7 @@ export const CloudStorageScreen: React.FC = () => {
   const renderStorageTypeSection = () => (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>存储类型</Text>
-      {(['imgur', 'sm.ms', 'github', 'custom'] as CloudStorageType[]).map((type) => (
+      {(['github', 'imgur', 'sm.ms', 'custom'] as CloudStorageType[]).map((type) => (
         <TouchableOpacity
           key={type}
           style={[
@@ -148,9 +146,9 @@ export const CloudStorageScreen: React.FC = () => {
         >
           <Ionicons
             name={
+              type === 'github' ? 'logo-github' :
               type === 'imgur' ? 'image' :
               type === 'sm.ms' ? 'cloud-upload' :
-              type === 'github' ? 'logo-github' :
               'server'
             }
             size={24}
@@ -163,9 +161,9 @@ export const CloudStorageScreen: React.FC = () => {
               config.type === type && { color: '#fff' },
             ]}
           >
-            {type === 'imgur' ? 'Imgur' :
-             type === 'sm.ms' ? 'SM.MS' :
-             type === 'github' ? 'GitHub' :
+            {type === 'github' ? 'GitHub' :
+             type === 'imgur' ? 'Imgur (todo)' :
+             type === 'sm.ms' ? 'SM.MS (todo)' :
              '自定义图床'}
           </Text>
         </TouchableOpacity>
@@ -216,6 +214,23 @@ export const CloudStorageScreen: React.FC = () => {
       {config.type === 'github' && (
         <>
           <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>仓库地址</Text>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  borderColor: isDarkMode ? '#333' : '#ddd',
+                  backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
+                  color: isDarkMode ? '#fff' : '#000',
+                }
+              ]}
+              value={config.githubRepo}
+              onChangeText={(text) => setConfig({ ...config, githubRepo: text })}
+              placeholder="格式：用户名/仓库名"
+              placeholderTextColor={isDarkMode ? '#666' : '#999'}
+            />
+          </View>
+          <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>访问令牌</Text>
             <TextInput
               style={[
@@ -231,23 +246,6 @@ export const CloudStorageScreen: React.FC = () => {
               placeholder="输入GitHub访问令牌"
               placeholderTextColor={isDarkMode ? '#666' : '#999'}
               secureTextEntry
-            />
-          </View>
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>仓库地址</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  borderColor: isDarkMode ? '#333' : '#ddd',
-                  backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
-                  color: isDarkMode ? '#fff' : '#000',
-                }
-              ]}
-              value={config.githubRepo}
-              onChangeText={(text) => setConfig({ ...config, githubRepo: text })}
-              placeholder="格式：用户名/仓库名"
-              placeholderTextColor={isDarkMode ? '#666' : '#999'}
             />
           </View>
         </>
@@ -316,6 +314,12 @@ export const CloudStorageScreen: React.FC = () => {
         />
       </View>
 
+      <View style={styles.infoBox}>
+        <Text style={[styles.infoText, { color: isDarkMode ? '#999' : '#666' }]}>
+          注意：同步功能会使用网络数据，请注意移动数据流量的使用
+        </Text>
+      </View>
+
       {config.autoSync && (
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>同步频率（分钟）</Text>
@@ -340,42 +344,12 @@ export const CloudStorageScreen: React.FC = () => {
         </View>
       )}
 
-      <View style={styles.switchGroup}>
-        <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>仅在WiFi下同步</Text>
-        <Switch
-          value={config.syncOnWifi}
-          onValueChange={(value) => setConfig({ ...config, syncOnWifi: value })}
-        />
-      </View>
-
       <View style={styles.row}>
         <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>重复检测</Text>
         <Switch
           value={config.deduplication}
           onValueChange={(value) => setConfig({ ...config, deduplication: value })}
           trackColor={{ false: isDarkMode ? '#333' : '#e0e0e0', true: '#34C759' }}
-        />
-      </View>
-
-      <View style={styles.inputGroup}>
-        <Text style={[styles.label, { color: isDarkMode ? '#fff' : '#000' }]}>最大存储空间 (MB)</Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              borderColor: isDarkMode ? '#333' : '#ddd',
-              backgroundColor: isDarkMode ? '#1c1c1c' : '#fff',
-              color: isDarkMode ? '#fff' : '#000',
-            }
-          ]}
-          value={config.maxStorageSize.toString()}
-          onChangeText={(text) => {
-            const size = parseInt(text) || 1024;
-            setConfig({ ...config, maxStorageSize: size });
-          }}
-          keyboardType="number-pad"
-          placeholder="默认1024 (1GB)"
-          placeholderTextColor={isDarkMode ? '#666' : '#999'}
         />
       </View>
 
@@ -569,5 +543,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
+  },
+  infoBox: {
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 }); 
