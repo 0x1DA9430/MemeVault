@@ -75,15 +75,25 @@ export const MemeGrid: React.FC<MemeGridProps> = ({
     </TouchableOpacity>
   );
 
+  const EmptyListComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={[styles.emptyText, { color: isDarkMode ? '#666' : '#999' }]}>
+        Ciallo～(∠・ω&#x3c; )⌒☆
+      </Text>
+    </View>
+  );
+
   return (
     <FlatList
       data={memes}
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
       numColumns={numColumns}
+      ListEmptyComponent={EmptyListComponent}
       contentContainerStyle={[
         styles.container,
-        { backgroundColor: isDarkMode ? '#000' : '#fff' }
+        { backgroundColor: isDarkMode ? '#000' : '#fff' },
+        memes.length === 0 && styles.emptyList
       ]}
     />
   );
@@ -92,6 +102,20 @@ export const MemeGrid: React.FC<MemeGridProps> = ({
 const styles = StyleSheet.create({
   container: {
     padding: gap,
+  },
+  emptyList: {
+    flex: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 300,
+    paddingBottom: 100,
+  },
+  emptyText: {
+    fontSize: 24,
+    fontWeight: 'medium',
   },
   memeContainer: {
     width: itemWidth,
