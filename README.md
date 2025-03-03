@@ -84,7 +84,7 @@ npm run android
   <img src="img/4.JPEG" alt="截图4" width="40%" />
 </p>
 
-## TODO
+## TODO (不知要到猴年马月系列)
 
 - 批量云同步(例如30张图一个batch)
 - 统计功能（标签使用分析、总览）显示异常
@@ -96,3 +96,4 @@ npm run android
 - 优化图片加载性能
 - 优化去重算法
 - 优化大批量图片导入速度
+- Android 端UI显示bug
