@@ -17,7 +17,7 @@ export class CloudStorageService {
   private initPromise: Promise<void>;
   private config: CloudStorageConfig = {
     enabled: false,
-    type: 'imgur',
+    type: 'github',
     autoSync: false,
     syncInterval: 120,  // 默认120分钟
     compressionQuality: 0.8,
@@ -562,6 +562,43 @@ export class CloudStorageService {
 
     // 不再需要清理存储空间
     return;
+  }
+
+  // 清除所有云存储数据
+  async clearAllData(): Promise<void> {
+    try {
+      // 重置配置为默认值
+      this.config = {
+        enabled: false,
+        type: 'github',
+        autoSync: false,
+        syncInterval: 120,
+        compressionQuality: 0.8,
+        deduplication: true,
+      };
+      await this.saveConfig();
+
+      // 清空同步队列
+      this.syncQueue = [];
+      await this.saveSyncQueue();
+
+      // 清空云端索引
+      this.cloudIndex.clear();
+      await this.saveCloudIndex();
+
+      // 重置同步统计
+      this.syncStats = {
+        totalSize: 0,
+        syncedCount: 0,
+        failedCount: 0,
+      };
+      await this.saveSyncStats();
+
+      console.log('所有云存储数据已清除');
+    } catch (error) {
+      console.error('清除云存储数据失败:', error);
+      throw error;
+    }
   }
 
   // 从云端删除

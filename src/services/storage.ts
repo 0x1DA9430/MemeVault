@@ -9,6 +9,7 @@ import { TagQueueService } from './tagQueue';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Sharing from 'expo-sharing';
 import * as Crypto from 'expo-crypto';
+import { CloudStorageService } from './cloudStorage';
 
 const MEMES_STORAGE_KEY = '@meme_vault_memes';
 const COLLECTIONS_STORAGE_KEY = '@meme_vault_collections';
@@ -390,6 +391,10 @@ export class StorageService {
       
       // 重置设置为默认值
       await this.settingsService.resetSettings();
+
+      // 清除云存储数据
+      const cloudService = await CloudStorageService.getInstance();
+      await cloudService.clearAllData();
       
       // 确保表情包目录存在但为空
       await this.ensureMemeDirectory();
