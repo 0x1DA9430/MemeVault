@@ -11,7 +11,7 @@
   "dependencies": {
     "@expo/vector-icons": "^14.0.4",
     "@react-native-async-storage/async-storage": "^2.1.1",
-    "@react-native-community/netinfo": "^11.4.1",
+    "@react-native-community/netinfo": "^11.0.0",
     "@react-native-firebase/app": "^21.11.0",
     "@react-native-firebase/firestore": "^21.11.0",
     "@react-native-firebase/storage": "^21.11.0",
