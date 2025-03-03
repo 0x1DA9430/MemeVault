@@ -243,15 +243,32 @@ export const HomeScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      const exportPath = await storageService.exportMemes(Array.from(selectedMemes));
-      await Sharing.shareAsync(exportPath, {
-        mimeType: 'application/zip',
-        dialogTitle: '导出表情包'
-      });
-      setIsSelectionMode(false);
-      setSelectedMemes(new Set());
+      
+      // 请求相册权限
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('权限错误', '需要相册权限才能保存图片');
+        return;
+      }
+
+      // 创建新相册
+      const albumName = `MemeVault_${new Date().getTime()}`;
+      const album = await MediaLibrary.createAlbumAsync(albumName);
+      
+      // 获取选中的表情包
+      const selectedMemesList = memes.filter(meme => selectedMemes.has(meme.id));
+      
+      // 保存每个图片到相册
+      for (const meme of selectedMemesList) {
+        const asset = await MediaLibrary.createAssetAsync(meme.uri);
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      }
+
+      Alert.alert('成功', `已将 ${selectedMemes.size} 张图片保存到相册"${albumName}"`);
+      exitSelectionMode();
     } catch (error) {
-      Alert.alert('错误', '导出失败');
+      console.error('导出失败:', error);
+      Alert.alert('错误', `导出失败: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setLoading(false);
     }
