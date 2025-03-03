@@ -84,7 +84,7 @@ function AppContent() {
             headerRight: () => (
               <TouchableOpacity
                 onPress={() => navigation.navigate('Settings')}
-                style={{ padding: 8, marginRight: 8 }}
+                style={{ padding: 10, marginRight: 10, marginLeft: 10 }}
               >
                 <Ionicons 
                   name="settings-outline" 
